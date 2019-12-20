@@ -1,4 +1,4 @@
-<!-- launch Gym ROS server -->
+<!-- Provide tesse-gym with data pulled from tesse_ros_bridge -->
 <launch>
 
     <!-- Set ports -->
