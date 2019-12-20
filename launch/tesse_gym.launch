@@ -1,0 +1,22 @@
+<!-- launch Gym ROS server -->
+<launch>
+
+    <!-- Set ports -->
+    <arg name="metadata_port" default="9007"/>
+    <arg name="image_port" default="9008"/>
+    <arg name="ns" default="tesse"/>
+
+    <node name="gym_ros_interface" pkg="gym_ros_interface" type="image_server.py" output="screen">
+        <param name="image_port" value="$(arg image_port)"/>
+        <remap from="/left_cam/image_raw" to="/$(arg ns)/left_cam_rgb/image_raw"/>
+        <remap from="/right_cam/image_raw" to="/$(arg ns)/right_cam_rgb/image_raw"/>
+        <remap from="/segmentation/image_raw" to="/$(arg ns)/segmentation/image_raw"/>
+        <remap from="/depth/image_raw" to="/$(arg ns)/depth/image_raw"/>
+        <remap from="/metadata" to="/$(arg ns)/metadata"/> </node>
+
+    <node name="gym_metadata_interface" pkg="gym_ros_interface" type="metadata_server.py" output="screen">
+        <param name="metadata_port" value="$(arg metadata_port)"/>
+        <remap from="/metadata" to="/tesse/metadata"/>
+    </node>
+</launch>
+    
