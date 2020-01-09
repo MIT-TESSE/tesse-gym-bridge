@@ -1,10 +1,9 @@
 # gym-ros-interface
 
-An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS. 
-This package takes requests from [tesse-interface](https://github.mit.edu/TESS/tesse-interface) (used by tesse-gym) and responds with data from rostopics, 
-allowing for inputs from sources such as [Kimera](https://github.com/MIT-SPARK/Kimera-VIO-ROS).
+An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from thrid-party perception modules.
 
 ## Installation
+1. Clone and build the repo
 
 ```sh
 # setup catkin workspace
@@ -27,6 +26,16 @@ catkin build
 # source workspace
 source ~/catkin_ws/devel/setup.bash
 ```
+
+## Usage
+
+To run TESSE, Kimera-VIO, and Kimera-Semantics, and the required interfaces 
+
+```sh
+roslaunch gym_ros_interface run_kimera_tesse.launch
+```
+
+To control the TESSE agent through the Gym environment, run see the [move-agent](https://github.mit.edu/TESS/gym-ros-interface/blob/feature/unified-launch/notebooks/move-agent.ipynb) notebook
 
 ## Disclaimer
 
