@@ -1,13 +1,17 @@
 # gym-ros-interface
 
-An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from thrid-party perception modules.
+An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from perception modules.
 
 <div align="center">
   <img src="docs/tesse_kimera_gym_2.gif">
 </div>
 
 ## Installation
-1. Clone and build the repo
+1. Install [Kimera-VIO-ROS](https://github.com/MIT-SPARK/Kimera-VIO-ROS) and [Kimera-Semantics](https://github.com/MIT-SPARK/Kimera-Semantics
+
+Please refer to their installation guide.
+
+2. Clone and build the repo
 
 ```sh
 # setup catkin workspace
@@ -29,6 +33,15 @@ catkin build
 
 # source workspace
 source ~/catkin_ws/devel/setup.bash
+```
+
+3. Install [tesse-interface]https://github.mit.edu/TESS/tesse-interface/tree/feature/rgb-metadata) and switch to branch `feature/rgb-metadata`
+
+Follow the tesse-interface [installation instructions](https://github.mit.edu/TESS/tesse-interface) then:
+
+```sh
+cd ~/catkin_ws/src/tesse-interface
+git checkout feature/rgb-metadata 
 ```
 
 ## Usage
