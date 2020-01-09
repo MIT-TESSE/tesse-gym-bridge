@@ -21,8 +21,6 @@
     <arg name="image_port"              default="9008"/>
 
     <!-- Kimera VIO arguments -->
-    <arg name="left_cam_topic"          default="/tesse/left_cam/image_raw"/>
-    <arg name="right_cam_topic"         default="/tesse/right_cam/image_raw"/>
     <arg name="use_lcd"                 default="false"/>
 
     <!-- Kimera Semantics arguments -->
@@ -51,11 +49,7 @@
     <!-- Launch Kimera VIO -->
     <group if="$(arg run_kimera_vio)">
         <include file="$(find kimera_vio_ros)/launch/kimera_ros_tesse.launch">
-            <!--
-            <arg name="left_cam_topic"   value="$(arg left_cam_topic)"/>
-            <arg name="right_cam_topic"  value="$(arg right_cam_topic)"/>
-            -->
-            <arg name="use_lcd"          value="$(arg use_lcd)"/>
+            <arg name="use_lcd" value="$(arg use_lcd)"/>
         </include>
 
         <!-- Kimera VIO Visualization -->
