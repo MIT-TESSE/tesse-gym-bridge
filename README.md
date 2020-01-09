@@ -11,7 +11,7 @@ An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS,
 
 Please refer to their installation guide.
 
-2. Clone and build the repo
+2. Clone and build this repo
 
 ```sh
 # setup catkin workspace
