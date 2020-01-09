@@ -2,6 +2,10 @@
 
 An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from thrid-party perception modules.
 
+<div align="center">
+  <img src="docs/tesse_kimera_gym_2.gif">
+</div>
+
 ## Installation
 1. Clone and build the repo
 
