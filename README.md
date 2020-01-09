@@ -35,7 +35,7 @@ catkin build
 source ~/catkin_ws/devel/setup.bash
 ```
 
-3. Install [tesse-interface]https://github.mit.edu/TESS/tesse-interface/tree/feature/rgb-metadata) and switch to branch `feature/rgb-metadata`
+3. Install [tesse-interface](https://github.mit.edu/TESS/tesse-interface/tree/feature/rgb-metadata) and switch to branch `feature/rgb-metadata`
 
 Follow the tesse-interface [installation instructions](https://github.mit.edu/TESS/tesse-interface) then:
 
