@@ -6,7 +6,7 @@
     <arg name="image_port" default="9008"/>
     <arg name="ns" default="tesse"/>
 
-    <node name="gym_ros_interface" pkg="gym_ros_interface" type="image_server.py" output="screen">
+    <node name="gym_image_interface" pkg="gym_ros_interface" type="image_server.py" output="screen">
         <param name="image_port" value="$(arg image_port)"/>
         <remap from="/left_cam/image_raw" to="/$(arg ns)/left_cam_rgb/image_raw"/>
         <remap from="/right_cam/image_raw" to="/$(arg ns)/right_cam_rgb/image_raw"/>
