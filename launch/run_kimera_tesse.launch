@@ -61,7 +61,7 @@
     <!-- Launch Kimera Semantics -->
     <group if="$(arg run_kimera_semantics)">
         <!-- Note: we need a way to pass scene segmentation labels -->
-        <include file="$(find kimera_semantics_ros)/launch/kimera_semantics_v3_1_dense.launch">
+        <include file="$(find gym_ros_interface)/launch/kimera_semantics_v3_1_dense.launch">
             <remap from="/tesse/segmentation"  to="/tesse/segmentation/image_raw"/>
             <arg name="run_stereo_dense"       value="$(arg run_stereo_dense)"/>
         </include>
