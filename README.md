@@ -7,7 +7,7 @@ An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS,
 </div>
 
 ## Installation
-1. Install [Kimera-VIO-ROS](https://github.com/MIT-SPARK/Kimera-VIO-ROS) and [Kimera-Semantics](https://github.com/MIT-SPARK/Kimera-Semantics
+1. Install [Kimera-VIO-ROS](https://github.com/MIT-SPARK/Kimera-VIO-ROS) and [Kimera-Semantics](https://github.com/MIT-SPARK/Kimera-Semantics)
 
 Please refer to their installation guide.
 
