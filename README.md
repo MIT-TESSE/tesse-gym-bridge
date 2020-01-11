@@ -32,7 +32,7 @@ catkin build
 source ~/catkin_ws/devel/setup.bash
 ```
 
-#### To run an RL Agent with Kimera, the following steps are required
+#### To run an RL Agent with Kimera-VIO and Kimera-Semantics, the following steps are required
 
 2. Install [Kimera-VIO-ROS](https://github.com/MIT-SPARK/Kimera-VIO-ROS) and [Kimera-Semantics](https://github.com/MIT-SPARK/Kimera-Semantics)
 
