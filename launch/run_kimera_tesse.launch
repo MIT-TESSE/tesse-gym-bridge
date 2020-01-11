@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="ISO-8859-15"?>
+<launch>
+    <!-- Specificy what to run -->
+    <arg name="run_kimera_semantics"    default="true"/>
+    <arg name="run_kimera_vio"          default="true"/>
+    <arg name="run_visualization"       default="false"/>
+
+    <!-- TESSE arguments -->
+    <arg name="tesse_path"              default="/home/za27933/tess/builds/v0.5.3/tesse-treasure-hunt-v0.5.3.x86_64"/>
+
+    <!-- TESSE ROS Bridge arguments -->
+    <arg name="initial_scene"           default="1"/>
+    <arg name="width"                   default="320"/>
+    <arg name="height"                  default="240"/>
+    <arg name="enable_step_mode"        default="true"/>
+    <arg name="node_delay"              default="5.0"/>
+    <arg name="publish_rgb_images"      default="true"/>
+
+    <!-- Gym ROS Interface arguments -->
+    <arg name="metadata_port"           default="9007"/>
+    <arg name="image_port"              default="9008"/>
+
+    <!-- Kimera VIO arguments -->
+    <arg name="use_lcd"                 default="false"/>
+
+    <!-- Kimera Semantics arguments -->
+    <arg name="run_stereo_dense" default="true"/>
+
+    <!-- Launch TESSE -->
+    <node name="launch_tesse" pkg="gym_ros_interface" type="launch_tesse.py" >
+        <param name="tesse_path" value="$(arg tesse_path)"/>
+    </node>
+
+    <!-- Launch TESSE ROS bridge -->
+   <include file="$(find tesse_ros_bridge)/launch/tesse_bridge.launch">
+        <arg name="initial_scene"       value="$(arg initial_scene)"/>
+        <arg name="width"               value="$(arg width)"/>
+        <arg name="height"              value="$(arg height)"/>
+        <arg name="enable_step_mode"    value="$(arg enable_step_mode)"/>
+        <arg name="publish_rgb_images"  value="$(arg publish_rgb_images)"/>
+    </include>
+
+    <!-- Launch Gym ROS Interface -->
+    <include file="$(find gym_ros_interface)/launch/tesse_gym.launch">
+        <arg name="metadata_port"  value="$(arg metadata_port)"/>
+        <arg name="image_port"     value="$(arg image_port)"/>
+    </include>
+
+    <!-- Launch Kimera VIO -->
+    <group if="$(arg run_kimera_vio)">
+        <include file="$(find kimera_vio_ros)/launch/kimera_ros_tesse.launch">
+            <arg name="use_lcd" value="$(arg use_lcd)"/>
+        </include>
+
+        <!-- Kimera VIO Visualization -->
+        <group if="$(arg run_visualization)">
+            <node type="rviz" name="rviz_vio" pkg="rviz" args="-d $(find kimera_vio_ros)/rviz/kimera_vio_tesse.rviz"/>
+        </group>
+    </group>
+
+    <!-- Launch Kimera Semantics -->
+    <group if="$(arg run_kimera_semantics)">
+        <!-- Note: we need a way to pass scene segmentation labels -->
+        <include file="$(find gym_ros_interface)/launch/kimera_semantics_v3_1_dense.launch">
+            <remap from="/tesse/segmentation"  to="/tesse/segmentation/image_raw"/>
+            <arg name="run_stereo_dense"       value="$(arg run_stereo_dense)"/>
+        </include>
+
+        <!-- Kimera Semantics Visualization -->
+        <group if="$(arg run_visualization)">
+            <node type="rviz" name="rviz_semantics" pkg="rviz" args="-d $(find kimera_semantics_ros)/rviz/kimera_semantics_gt.rviz"/>
+        </group>
+    </group>
+
+</launch>
