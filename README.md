@@ -67,7 +67,7 @@ To run TESSE, Kimera-VIO, and Kimera-Semantics, and the required interfaces
 roslaunch gym_ros_interface run_kimera_tesse.launch tesse_path:=TESSE_BUILD_PATH
 ```
 
-To control the TESSE agent through the Gym environment, run see the [move-agent](https://github.mit.edu/TESS/gym-ros-interface/blob/feature/unified-launch/notebooks/move-agent.ipynb) notebook
+To control the TESSE agent through the Gym environment, run see the [move-agent](./notebooks/move-agent.ipynb) notebook
 
 ## Disclaimer
 
