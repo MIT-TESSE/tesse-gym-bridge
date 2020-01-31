@@ -20,9 +20,10 @@ VALID_MSG_TAGS = ["tIMG", "rIMG"]
 
 class ImageServer:
     def __init__(self):
-        self.image_port = rospy.get_param("~image_port", 9008)
+        self.image_port       = rospy.get_param("~image_port", 9008)
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
-        rospy.loginfo("image port " + str(self.image_port))
+        self.far_clip_plane   = rospy.get_param("~far_clip_plane", 50.0)
+
         self.subscribers = [
             rospy.Subscriber("/left_cam/image_raw", Image, self.left_cam_callback),
             rospy.Subscriber("/right_cam/image_raw", Image, self.right_cam_callback),
@@ -131,7 +132,8 @@ class ImageServer:
 
     def depth_cam_callback(self, img):
         """ Listen to depth topic and save message. """
-        depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1]
+        # decoded image is in [0, far_clip_plane], map to [0, 1] for proper encoding
+        depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1] / self.far_clip_plane
         self.data["depth"] = self.encode_float_to_rgba(depth_img)
 
     def segmentation_noisy_cam_callback(self, img):
