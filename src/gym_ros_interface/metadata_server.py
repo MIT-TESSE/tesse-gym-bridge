@@ -5,22 +5,33 @@ from std_msgs.msg import String
 import struct
 import socket
 
+from gym_ros_interface.srv import DataSourceService
+
 IMG_MSG_LENGTH = 12
 
 
 class MetadataServer:
     def __init__(self):
+        self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.image_port = rospy.get_param("~metadata_port", 9007)
         self.metadata_subscriber = rospy.Subscriber("/metadata", String, self.metadata_callback)
 
+        self.data_source_service = rospy.Service(
+            "/gym_ros_interface/data_source_request", DataSourceService, self.rosservice_change_data_source
+        )
+
         # store last received metadata
-        self.last_metadata = ''
+        self.last_metadata = ""
 
         # initialize socket
         self.metadata_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.metadata_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.metadata_socket.settimeout(None)
-        self.metadata_socket.bind(('', self.image_port))
+        self.metadata_socket.bind(("", self.image_port))
+
+    def rosservice_change_data_source(self, request):
+        self.use_ground_truth = request.use_gt
+        return True
 
     def metadata_callback(self, msg):
         """ Listens to the metadata topic and save last metadata message. """
@@ -31,17 +42,17 @@ class MetadataServer:
         while not rospy.is_shutdown():
             message, address = self.metadata_socket.recvfrom(1024)
 
-            if message == 'rMET':
+            if message == "rMET":
                 # send response
                 response = bytearray()
-                response.extend('meta')
+                response.extend("meta")
 
                 metadata = self.last_metadata
-                response.extend(struct.pack('I', len(metadata)))
+                response.extend(struct.pack("I", len(metadata)))
                 response.extend(self.last_metadata)
 
                 image_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                image_send_socket.connect(('', self.image_port))
+                image_send_socket.connect(("", self.image_port))
                 image_send_socket.send(response)
                 image_send_socket.close()
             else:
