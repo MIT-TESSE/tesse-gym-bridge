@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/usr/bin/env python
 
 import xml.etree.ElementTree as ET
 import rospy
@@ -11,6 +11,7 @@ import numpy as np
 import struct
 import socket
 
+from tesse.utils import UdpListener
 from gym_ros_interface.srv import DataSourceService
 
 
@@ -20,9 +21,10 @@ VALID_MSG_TAGS = ["tIMG", "rIMG"]
 
 class ImageServer:
     def __init__(self):
-        self.image_port       = rospy.get_param("~image_port", 9008)
-        self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
-        self.far_clip_plane   = rospy.get_param("~far_clip_plane", 50.0)
+        self.image_port        = rospy.get_param("~image_port", 9008)
+        self.metadata_udp_port = rospy.get_param("~metadata_udp_port", 9004)
+        self.use_ground_truth  = rospy.get_param("~use_ground_truth", True)
+        self.far_clip_plane    = rospy.get_param("~far_clip_plane", 50.0)
 
         self.subscribers = [
             rospy.Subscriber("/left_cam/image_raw", Image, self.left_cam_callback),
@@ -31,7 +33,6 @@ class ImageServer:
             rospy.Subscriber("/depth/image_raw", Image, self.depth_cam_callback),
             rospy.Subscriber("/segmentation_noisy/image_raw", Image, self.segmentation_noisy_cam_callback),
             rospy.Subscriber("/depth_noisy/image_raw", Image, self.depth_noisy_cam_callback),
-            rospy.Subscriber("/metadata", String, self.metadata_callback),
             rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback),
         ]
 
@@ -43,6 +44,11 @@ class ImageServer:
 
         # hold most recent images
         self.data = {}
+
+        # read UDP metadata broadcast from TESSE
+        self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
+        self.udp_listener.subscribe("catch_metadata", self.catch_udp_broadcast)
+        self.udp_listener.start()  # TODO close connection
 
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -62,6 +68,15 @@ class ImageServer:
         self.data["metadata_noisy"] = self.metadata_from_odometry_msg(msg)
 
     def metadata_from_odometry_msg(self, msg):
+        """ Turn odometry message into TESSE metadata message
+
+        Args:
+            msg (Odometry): ROS odometry message.
+
+        Returns:
+            str: Metadata message containing position and orientation
+                information from `msg`.
+        """
         pose = msg.pose.pose
         position = pose.position
         quat = pose.orientation
@@ -106,11 +121,10 @@ class ImageServer:
         """ Encode 1 channel float image to 8 bit unsigned int RGBA image.
 
         Args:
-            img (np.ndarray - shape=(H, W)): Input image.
+            img (np.ndarray): Shape - (H, W) image.
 
         Returns:
-            np.ndarray - shape=(H, W, 4)
-                Unsigned 8 bit RGBA image.
+            np.ndarray: shape=(H, W, 4) unsigned 8 bit RGBA image.
         """
         img = img[..., np.newaxis] * np.float32((1.0, 255.0, 255.0 ** 2, 255.0 ** 3))
         img -= np.floor(img)
@@ -145,9 +159,8 @@ class ImageServer:
         depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1]
         self.data["depth_noisy"] = self.encode_float_to_rgba(depth_img)
 
-    def metadata_callback(self, msg):
-        """ Listen to metadata topic and save message. """
-        self.data["metadata"] = msg.data
+    def catch_udp_broadcast(self, udp_metadata):
+        self.data["metadata"] = udp_metadata
 
     def unpack_img_msg(self, img_msg):
         assert len(img_msg) == 12, "recieved image message of length %d, require length 12" % len(img_msg)
