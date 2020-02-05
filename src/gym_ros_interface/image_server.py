@@ -48,7 +48,7 @@ class ImageServer:
         # read UDP metadata broadcast from TESSE
         self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
         self.udp_listener.subscribe("catch_metadata", self.catch_udp_broadcast)
-        self.udp_listener.start()  # TODO close connection
+        self.udp_listener.start()
 
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -61,8 +61,8 @@ class ImageServer:
         return True
 
     def on_shutdown(self):
-        self.img_server.image_socket.close()
-        rospy.loginfo("Shutting down GymROS_node")
+        self.image_socket.close()
+        self.udp_listener.join()
 
     def odometry_callback(self, msg):
         self.data["metadata_noisy"] = self.metadata_from_odometry_msg(msg)
@@ -163,6 +163,15 @@ class ImageServer:
         self.data["metadata"] = udp_metadata
 
     def unpack_img_msg(self, img_msg):
+        """ Unpack an image request message.
+
+        Args:
+            img_msg (bytearray): Image request message.
+
+        Returns:
+            Tuple[int, int, int]: IDs for camera, compression, and number
+                of channels.
+        """
         assert len(img_msg) == 12, "recieved image message of length %d, require length 12" % len(img_msg)
         camera = struct.unpack("<i", img_msg[0:4])[0]
         compression = struct.unpack("<i", img_msg[4:8])[0]
