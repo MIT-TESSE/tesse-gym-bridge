@@ -1,8 +1,9 @@
 #! /usr/bin/python
 
-import rospy
 import subprocess
 import time
+
+import rospy
 
 
 class LaunchTesse:
