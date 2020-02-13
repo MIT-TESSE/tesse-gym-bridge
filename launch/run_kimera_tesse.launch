@@ -5,6 +5,7 @@
     <arg name="kimera_vio"            default="true"/>
     <arg name="visualize"             default="false"/>
     <arg name="semantic_segmentation" default="true"/>
+    <arg name="launch_tesse"          default="true"/>
 
     <!-- TESSE arguments -->
     <arg name="tesse_path"              default="/home/za27933/tess/builds/goseek/v0.0.2/goseek-0.0.2.x86_64"/>
@@ -34,7 +35,7 @@
     <arg name="run_stereo_dense" default="true"/>
 
     <!-- Launch TESSE -->
-    <node name="launch_tesse" pkg="gym_ros_interface" type="launch_tesse.py" >
+    <node name="launch_tesse" pkg="gym_ros_interface" type="launch_tesse.py" if="$(arg launch_tesse)">
         <param name="tesse_path" value="$(arg tesse_path)"/>
     </node>
 
