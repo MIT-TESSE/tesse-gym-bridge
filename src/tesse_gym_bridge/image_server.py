@@ -1,4 +1,9 @@
-#! /usr/bin/python
+#!/usr/bin/env python
+
+import socket
+import struct
+
+import numpy as np
 
 ###################################################################################################
 # DISTRIBUTION STATEMENT A. Approved for public release. Distribution is unlimited.
@@ -21,18 +26,15 @@
 # this work.
 ###################################################################################################
 
-import xml.etree.ElementTree as ET
 import rospy
-from sensor_msgs.msg import Image
-from std_msgs.msg import String
-from nav_msgs.msg import Odometry
+import tf
 from cv_bridge import CvBridge
-
-import numpy as np
-import struct
-import socket
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Image
+from tesse.utils import UdpListener
 
 from tesse_gym_bridge.srv import DataSourceService
+from tesse_gym_bridge.utils import metadata_from_odometry_msg
 
 
 IMG_MSG_LENGTH = 12
@@ -41,9 +43,10 @@ VALID_MSG_TAGS = ["tIMG", "rIMG"]
 
 class ImageServer:
     def __init__(self):
-        self.image_port       = rospy.get_param("~image_port", 9008)
+        self.image_port = rospy.get_param("~image_port", 9008)
+        self.metadata_udp_port = rospy.get_param("~metadata_udp_port", 9004)
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
-        self.far_clip_plane   = rospy.get_param("~far_clip_plane", 50.0)
+        self.far_clip_plane = rospy.get_param("~far_clip_plane", 50.0)
 
         self.subscribers = [
             rospy.Subscriber("/left_cam/image_raw", Image, self.left_cam_callback),
@@ -52,7 +55,7 @@ class ImageServer:
             rospy.Subscriber("/depth/image_raw", Image, self.depth_cam_callback),
             rospy.Subscriber("/segmentation_noisy/image_raw", Image, self.segmentation_noisy_cam_callback),
             rospy.Subscriber("/depth_noisy/image_raw", Image, self.depth_noisy_cam_callback),
-            rospy.Subscriber("/metadata", String, self.metadata_callback),
+
             rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback),
         ]
 
@@ -65,73 +68,64 @@ class ImageServer:
         # hold most recent images
         self.data = {}
 
+        # read UDP metadata broadcast from TESSE
+        self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
+        self.udp_listener.subscribe("catch_metadata", self.catch_udp_broadcast)
+        self.udp_listener.start()
+
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.image_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.image_socket.settimeout(None)
         self.image_socket.bind(("", self.image_port))
 
+        self.transform_listener = tf.TransformListener()
+
+        self.initial_pose = None
+
     def rosservice_change_data_source(self, request):
+        """ Change between ground truth and noisy data modes.
+
+        Default provides ground truth image and position information
+        from TESSE. Upon request, noisy semantic segmentation,
+        depth, and position estimates are given instead.
+
+        Args:
+            request (DataSourceServie): ROS service data source.
+
+        Returns:
+            bool: True, indicating successful service call.
+        """
         self.use_ground_truth = request.use_gt
         return True
 
     def on_shutdown(self):
-        self.img_server.image_socket.close()
-        rospy.loginfo("Shutting down GymROS_node")
+        """ Close image server socket and udp listener. """
+        self.image_socket.close()
+        self.udp_listener.join()
 
     def odometry_callback(self, msg):
-        self.data["metadata_noisy"] = self.metadata_from_odometry_msg(msg)
+        """ Form metadata message containing noisy pose.
 
-    def metadata_from_odometry_msg(self, msg):
-        pose = msg.pose.pose
-        position = pose.position
-        quat = pose.orientation
-        timestamp = msg.header.stamp
-
-        msg_root = ET.Element("TESSE_Agent_Metadata_v0.5")
-        ET.SubElement(
-            msg_root, "position", {"x": str(position.x), "y": str(position.y), "z": str(position.z)},
-        )
-        ET.SubElement(
-            msg_root, "quaternion", {"x": str(quat.x), "y": str(quat.y), "z": str(quat.z), "w": str(quat.w)},
-        )
-        t = ET.SubElement(msg_root, "time")
-        rospy.loginfo(type(timestamp))
-        t.text = str(timestamp.to_sec())
-        # TODO velocity
-
-        if "metadata" in self.data.keys():
-            metadata_root = ET.fromstring(self.data["metadata"])
-            metadata_time = metadata_root.find("time").text
-            collision_msg = metadata_root.find("collision")
-            collider_msg = metadata_root.find("collider")
-            ET.SubElement(
-                msg_root,
-                "collision",
-                {
-                    "status": collision_msg.attrib["status"],
-                    "name": collision_msg.attrib["name"],
-                    "time": metadata_time,
-                },
-            )
-            ET.SubElement(
-                msg_root, "collider", {"status": collider_msg.attrib["status"], "time": metadata_time},
-            )
-
-        msg = ET.tostring(msg_root)
-        rospy.loginfo("Formed messge: %s" % (msg))
-        return msg
+        Args:
+            msg (Odometry): Odometry message containing a noisy pose estimate.
+        """
+        try:
+            # TODO check
+            self.data["metadata_noisy"] = metadata_from_odometry_msg(msg, self.data["metadata"])
+        except Exception as ex:
+            rospy.loginfo("Image server caught exception %s" % ex)
+            self.data["metadata_noisy"] = ""
 
     @staticmethod
     def encode_float_to_rgba(img):
         """ Encode 1 channel float image to 8 bit unsigned int RGBA image.
 
         Args:
-            img (np.ndarray - shape=(H, W)): Input image.
+            img (np.ndarray): Shape - (H, W) image.
 
         Returns:
-            np.ndarray - shape=(H, W, 4)
-                Unsigned 8 bit RGBA image.
+            np.ndarray: shape=(H, W, 4) unsigned 8 bit RGBA image.
         """
         img = img[..., np.newaxis] * np.float32((1.0, 255.0, 255.0 ** 2, 255.0 ** 3))
         img -= np.floor(img)
@@ -166,11 +160,20 @@ class ImageServer:
         depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1]
         self.data["depth_noisy"] = self.encode_float_to_rgba(depth_img)
 
-    def metadata_callback(self, msg):
-        """ Listen to metadata topic and save message. """
-        self.data["metadata"] = msg.data
+    def catch_udp_broadcast(self, udp_metadata):
+        """ Capture metadata messages broadcast by TESSE. """
+        self.data["metadata"] = udp_metadata
 
     def unpack_img_msg(self, img_msg):
+        """ Unpack an image request message.
+
+        Args:
+            img_msg (bytearray): Image request message.
+
+        Returns:
+            Tuple[int, int, int]: IDs for camera, compression, and number
+                of channels.
+        """
         assert len(img_msg) == 12, "recieved image message of length %d, require length 12" % len(img_msg)
         camera = struct.unpack("<i", img_msg[0:4])[0]
         compression = struct.unpack("<i", img_msg[4:8])[0]
@@ -199,7 +202,7 @@ class ImageServer:
                 if camera == 1:
                     data_response.append((self.data["right_cam"], "xRGB"))
                 if camera == 2:
-                    data_response.append(
+                    data_response.append(  # TODO error check
                         (
                             self.data["segmentation"] if self.use_ground_truth else self.data["segmentation_noisy"],
                             "xRGB",

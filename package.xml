@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
     <name>tesse_gym_bridge</name>
-    <version>0.0.1</version>
-    <description>Gym ROS interface</description>
+    <version>0.1.0</version>
+    <description>Bridge between tesse-gym and ROS</description>
 
     <license>MIT</license>
     <maintainer email="zachary.ravichandran@ll.mit.edu">Zac Ravichandran</maintainer>

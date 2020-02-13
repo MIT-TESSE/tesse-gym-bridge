@@ -5,9 +5,10 @@
     <arg name="kimera_vio"            default="true"/>
     <arg name="visualize"             default="false"/>
     <arg name="semantic_segmentation" default="true"/>
+    <arg name="launch_tesse"          default="true"/>
 
     <!-- TESSE arguments -->
-    <arg name="tesse_path"              default="/home/za27933/tess/builds/v0.5.3/tesse-treasure-hunt-v0.5.3.x86_64"/>
+    <arg name="tesse_path"              default="/home/za27933/tess/builds/goseek/v0.0.2/goseek-0.0.2.x86_64"/>
 
     <!-- TESSE ROS Bridge arguments -->
     <arg name="initial_scene"           default="1"/>
@@ -34,7 +35,7 @@
     <arg name="run_stereo_dense" default="true"/>
 
     <!-- Launch TESSE -->
-    <node name="launch_tesse" pkg="tesse_gym_bridge" type="launch_tesse.py" >
+    <node name="launch_tesse" pkg="tesse_gym_bridge" type="launch_tesse.py" if="$(arg launch_tesse)">
         <param name="tesse_path" value="$(arg tesse_path)"/>
     </node>
 
