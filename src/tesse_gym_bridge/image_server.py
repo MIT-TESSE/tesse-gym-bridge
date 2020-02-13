@@ -32,7 +32,7 @@ import numpy as np
 import struct
 import socket
 
-from gym_ros_interface.srv import DataSourceService
+from tesse_gym_bridge.srv import DataSourceService
 
 
 IMG_MSG_LENGTH = 12
@@ -57,7 +57,7 @@ class ImageServer:
         ]
 
         self.data_source_service = rospy.Service(
-            "/gym_ros_interface/data_source_request", DataSourceService, self.rosservice_change_data_source,
+            "/tesse_gym_bridge/data_source_request", DataSourceService, self.rosservice_change_data_source,
         )
 
         self.cv_bridge = CvBridge()

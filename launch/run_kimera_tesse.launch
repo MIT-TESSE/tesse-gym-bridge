@@ -34,7 +34,7 @@
     <arg name="run_stereo_dense" default="true"/>
 
     <!-- Launch TESSE -->
-    <node name="launch_tesse" pkg="gym_ros_interface" type="launch_tesse.py" >
+    <node name="launch_tesse" pkg="tesse_gym_bridge" type="launch_tesse.py" >
         <param name="tesse_path" value="$(arg tesse_path)"/>
     </node>
 
@@ -51,7 +51,7 @@
     </include>
 
     <!-- Launch Gym ROS Interface -->
-    <include file="$(find gym_ros_interface)/launch/tesse_gym.launch">
+    <include file="$(find tesse_gym_bridge)/launch/tesse_gym.launch">
         <arg name="metadata_port"  value="$(arg metadata_port)"/>
         <arg name="image_port"     value="$(arg image_port)"/>
     </include>
@@ -78,7 +78,7 @@
     <!-- Launch Kimera Semantics -->
     <group if="$(arg kimera_semantics)">
         <!-- Note: we need a way to pass scene segmentation labels -->
-        <include file="$(find gym_ros_interface)/launch/kimera_semantics_v3_1_dense.launch">
+        <include file="$(find tesse_gym_bridge)/launch/kimera_semantics_v3_1_dense.launch">
             <remap from="/tesse/segmentation"  to="/tesse/segmentation/image_raw"/>
             <arg name="run_stereo_dense"       value="$(arg run_stereo_dense)"/>
         </include>

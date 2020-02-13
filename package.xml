@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-    <name>gym_ros_interface</name>
+    <name>tesse_gym_bridge</name>
     <version>0.0.1</version>
     <description>Gym ROS interface</description>
 

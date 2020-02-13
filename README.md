@@ -22,7 +22,7 @@ git clone git@github.mit.edu:TESS/gym-ros-interface.git
 
 # install dependencies
 wstool init
-wstool merge gym-ros-interface/install/gym_ros_interface.rosinstall 
+wstool merge gym-ros-interface/install/tesse_gym_bridge.rosinstall 
 cd ..
 
 # compile
@@ -64,7 +64,7 @@ python setup.py develop
 To run TESSE, Kimera-VIO, and Kimera-Semantics, and the required interfaces
 
 ```sh
-roslaunch gym_ros_interface run_kimera_tesse.launch tesse_path:=TESSE_BUILD_PATH
+roslaunch tesse_gym_bridge run_kimera_tesse.launch tesse_path:=TESSE_BUILD_PATH
 ```
 
 To control the TESSE agent through the Gym environment, run see the [move-agent](./notebooks/move-agent.ipynb) notebook

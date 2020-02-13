@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(gym_ros_interface)
+project(tesse_gym_bridge)
 
 find_package(catkin_simple REQUIRED)
 catkin_python_setup()
