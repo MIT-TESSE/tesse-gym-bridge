@@ -29,7 +29,7 @@ from nav_msgs.msg import Odometry
 from tesse.utils import UdpListener
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import metadata_from_odometry_msg
+from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
 
 
 class MetadataServer:
@@ -37,15 +37,18 @@ class MetadataServer:
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.metadata_udp_port = rospy.get_param("~metadata_udp_port", 9004)
         self.metadata_port = rospy.get_param("~metadata_port", 9007)
-        self.nosy_pose_subscriber = rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback)
+        self.nosy_pose_subscriber = rospy.Subscriber(
+            "/kimera_vio_ros/odometry", Odometry, self.odometry_callback
+        )
 
         self.data_source_service = rospy.Service(
-            "/tesse_gym_bridge/data_source_request", DataSourceService, self.rosservice_change_data_source
+            "/tesse_gym_bridge/data_source_request",
+            DataSourceService,
+            self.rosservice_change_data_source,
         )
 
         # store last received metadata
-        self.last_metadata = ""
-        self.last_noisy_metadata = ""
+        self.data = TesseData()
 
         # read UDP metadata broadcast from TESSE
         self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
@@ -81,17 +84,16 @@ class MetadataServer:
             msg (Odometry): Odometry message containing a noisy pose estimate.
         """
         try:
-            # TODO check
-            self.last_noisy_metadata = metadata_from_odometry_msg(
-                msg, self.last_metadata
+            self.data.metadata_noisy = metadata_from_odometry_msg(
+                msg, self.data.metadata_gt
             )
         except Exception as ex:
             rospy.loginfo("Metadata server caught exception %s" % ex)
-            self.last_noisy_metadata = ""
+            self.data.metadata_noisy = ""
 
     def catch_udp_broadcast(self, udp_metadata):
         """ Capture metadata messages broadcast by TESSE. """
-        self.last_metadata = udp_metadata
+        self.data.metadata_gt = udp_metadata
 
     def on_shutdown(self):
         """ Close metadata server socket and udp listener. """
@@ -109,17 +111,19 @@ class MetadataServer:
                 response.extend("meta")
 
                 metadata = (
-                    self.last_metadata
+                    self.data.metadata_gt
                     if self.use_ground_truth
-                    else self.last_noisy_metadata
+                    else self.data.metadata_noisy
                 )
                 response.extend(struct.pack("I", len(metadata)))
                 response.extend(metadata)
 
-                image_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                image_send_socket.connect(("", self.metadata_port))
-                image_send_socket.send(response)
-                image_send_socket.close()
+                metadata_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                metadata_send_socket.connect(("", self.metadata_port))
+                metadata_send_socket.send(response)
+                metadata_send_socket.close()
+            elif message == "sRES":
+                rospy.loginfo("Setting new episode")
             else:
                 rospy.logerror("Unknown tag: %s" % message)
 
