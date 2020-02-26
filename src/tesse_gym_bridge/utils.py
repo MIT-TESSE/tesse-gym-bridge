@@ -131,3 +131,82 @@ def metadata_from_odometry_msg(msg, gt_metadata):
 
     msg = ET.tostring(msg_root)
     return msg
+
+
+class TesseData:
+    """ Class to hold TESSE Data"""
+
+    def __init__(self):
+        self._rgb_left = None
+        self._rgb_right = None
+        self._segmentation_gt = None
+        self._depth_gt = None
+        self._metadata_gt = None
+
+        self._segmentation_noisy = None
+        self._depth_noisy = None
+        self._metadata_noisy = None
+
+    @property
+    def rgb_left(self):
+        return self._rgb_left
+
+    @rgb_left.setter
+    def rgb_left(self, value):
+        self._rgb_left = value
+
+    @property
+    def rgb_right(self):
+        return self._rgb_right
+
+    @rgb_right.setter
+    def rgb_right(self, value):
+        self._rgb_right = value
+
+    @property
+    def segmentation_gt(self):
+        return self._segmentation_gt
+
+    @segmentation_gt.setter
+    def segmentation_gt(self, value):
+        self._segmentation_gt = value
+
+    @property
+    def depth_gt(self):
+        return self._depth_gt
+
+    @depth_gt.setter
+    def depth_gt(self, value):
+        self._depth_gt = value
+
+    @property
+    def metadata_gt(self):
+        return self._metadata_gt
+
+    @metadata_gt.setter
+    def metadata_gt(self, value):
+        self._metadata_gt = value
+
+    @property
+    def segmentation_noisy(self):
+        return self._segmentation_noisy
+
+    @segmentation_noisy.setter
+    def segmentation_noisy(self, value):
+        self._segmentation_noisy = value
+
+    @property
+    def depth_noisy(self):
+        return self._depth_noisy
+
+    @depth_noisy.setter
+    def depth_noisy(self, value):
+        self._depth_noisy = value
+
+    @property
+    def metadata_noisy(self):
+        return self._metadata_noisy
+
+    @metadata_noisy.setter
+    def metadata_noisy(self, value):
+        self._metadata_noisy = value
