@@ -21,8 +21,9 @@
 # this work.
 ###################################################################################################
 
-import rospy
 import subprocess
+
+import rospy
 
 
 class LaunchTesse:
