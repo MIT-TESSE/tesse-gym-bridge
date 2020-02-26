@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 
-import socket
-import struct
-
-import numpy as np
-
 ###################################################################################################
 # DISTRIBUTION STATEMENT A. Approved for public release. Distribution is unlimited.
 #
@@ -26,16 +21,23 @@ import numpy as np
 # this work.
 ###################################################################################################
 
+import socket
+import struct
+import time
+
+import numpy as np
+
 import rospy
 import tf
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
+from tesse.env import Env
+from tesse.msgs import StepWithTransform
 from tesse.utils import UdpListener
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import metadata_from_odometry_msg
-
+from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
 
 IMG_MSG_LENGTH = 12
 VALID_MSG_TAGS = ["tIMG", "rIMG"]
@@ -65,8 +67,8 @@ class ImageServer:
 
         self.cv_bridge = CvBridge()
 
-        # hold most recent images
-        self.data = {}
+        # hold current data
+        self.data = TesseData()
 
         # read UDP metadata broadcast from TESSE
         self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
@@ -82,6 +84,13 @@ class ImageServer:
         self.transform_listener = tf.TransformListener()
 
         self.initial_pose = None
+
+        # If current time is 0, advance game time so initial data is published
+        while self.data.rgb_left is None:
+            time.sleep(2)  # wait for TESSE to start. TODO find more elegant way to do this
+            rospy.loginfo("Sending empty step message to advance game time")
+            Env().send(StepWithTransform(0, 0, 0))
+        rospy.loginfo("Interface initialized")
 
     def rosservice_change_data_source(self, request):
         """ Change between ground truth and noisy data modes.
@@ -112,10 +121,12 @@ class ImageServer:
         """
         try:
             # TODO check
-            self.data["metadata_noisy"] = metadata_from_odometry_msg(msg, self.data["metadata"])
+            self.data.metadata_noisy = metadata_from_odometry_msg(
+                msg, self.data.metadata_gt
+            )
         except Exception as ex:
             rospy.loginfo("Image server caught exception %s" % ex)
-            self.data["metadata_noisy"] = ""
+            self.data.metadata_noisy = ""
 
     @staticmethod
     def encode_float_to_rgba(img):
@@ -129,40 +140,48 @@ class ImageServer:
         """
         img = img[..., np.newaxis] * np.float32((1.0, 255.0, 255.0 ** 2, 255.0 ** 3))
         img -= np.floor(img)
-        img -= img[..., (1, 2, 3, 3)] * np.float32((1 / 256.0, 1 / 256.0, 1 / 256.0, 0.0))
+        img -= img[..., (1, 2, 3, 3)] * np.float32(
+            (1 / 256.0, 1 / 256.0, 1 / 256.0, 0.0)
+        )
 
         return (255 * img).astype(np.uint8)
 
     def left_cam_callback(self, img):
         """ Listen to left camera topic and save message. """
-        self.data["left_cam"] = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
+        self.data.rgb_left = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
 
     def right_cam_callback(self, img):
         """ Listen to right camera topic and save message. """
-        self.data["right_cam"] = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
+        self.data.rgb_right = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
 
     def segmentation_cam_callback(self, img):
         """ Listen to segmentation topic and save message. """
-        self.data["segmentation"] = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
+        self.data.segmentation_gt = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[
+            ::-1
+        ]
 
     def depth_cam_callback(self, img):
         """ Listen to depth topic and save message. """
         # decoded image is in [0, far_clip_plane], map to [0, 1] for proper encoding
-        depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1] / self.far_clip_plane
-        self.data["depth"] = self.encode_float_to_rgba(depth_img)
+        depth_img = (
+            self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1] / self.far_clip_plane
+        )
+        self.data.depth_gt = self.encode_float_to_rgba(depth_img)
 
     def segmentation_noisy_cam_callback(self, img):
         """ Listen to segmentation topic and save message. """
-        self.data["segmentation_noisy"] = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
+        self.data.segmentation_noisy = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[
+            ::-1
+        ]
 
     def depth_noisy_cam_callback(self, img):
         """ Listen to depth topic and save message. """
         depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1]
-        self.data["depth_noisy"] = self.encode_float_to_rgba(depth_img)
+        self.data.depth_noisy = self.encode_float_to_rgba(depth_img)
 
     def catch_udp_broadcast(self, udp_metadata):
         """ Capture metadata messages broadcast by TESSE. """
-        self.data["metadata"] = udp_metadata
+        self.data.metadata_gt = udp_metadata
 
     def unpack_img_msg(self, img_msg):
         """ Unpack an image request message.
@@ -174,11 +193,18 @@ class ImageServer:
             Tuple[int, int, int]: IDs for camera, compression, and number
                 of channels.
         """
-        assert len(img_msg) == 12, "recieved image message of length %d, require length 12" % len(img_msg)
+        assert (
+            len(img_msg) == 12
+        ), "recieved image message of length %d, require length 12" % len(img_msg)
         camera = struct.unpack("<i", img_msg[0:4])[0]
         compression = struct.unpack("<i", img_msg[4:8])[0]
         channels = struct.unpack("<i", img_msg[8:])[0]
         return camera, compression, channels
+
+    def null_check(self, x, var_name):
+        """ Checks for null values and logs error if found. """
+        if x is None:
+            rospy.logerr("Variable % is none" % var_name)
 
     def unpack_data_request(self, message):
         """ Decode client data request
@@ -187,8 +213,9 @@ class ImageServer:
             message (str): Client data request message.
 
         Returns:
-            Tuple[List[Tuple[np.ndarray, str]], str]: The first element is a
-                list of image/format pairs. The second element is metadata.
+            Tuple[List[Tuple[np.ndarray, str]], str]: Two element tuple of
+                - List of image and image format pairs
+                - metadata
         """
         message = bytearray(message)
         tag = message[0:4]
@@ -196,25 +223,48 @@ class ImageServer:
 
         if tag in VALID_MSG_TAGS:
             for msg_index in np.arange(4, len(message), 12):
-                camera, compression, channels = self.unpack_img_msg(message[msg_index : msg_index + IMG_MSG_LENGTH])
+                camera, compression, channels = self.unpack_img_msg(
+                    message[msg_index : msg_index + IMG_MSG_LENGTH]
+                )
                 if camera == 0:
-                    data_response.append((self.data["left_cam"], "xRGB"))
+                    self.null_check(self.data.rgb_left, "rgb left")
+                    data_response.append((self.data.rgb_left, "xRGB"))
                 if camera == 1:
-                    data_response.append((self.data["right_cam"], "xRGB"))
+                    self.null_check(self.data.rgb_right, "rgb right")
+                    data_response.append((self.data.rgb_right, "xRGB"))
                 if camera == 2:
+                    if self.use_ground_truth:
+                        self.null_check(self.data.segmentation_gt, "segmentation gt")
+                    else:
+                        self.null_check(self.data.segmentation_noisy, "segmentation noisy")
                     data_response.append(  # TODO error check
                         (
-                            self.data["segmentation"] if self.use_ground_truth else self.data["segmentation_noisy"],
+                            self.data.segmentation_gt
+                            if self.use_ground_truth
+                            else self.data.segmentation_noisy,
                             "xRGB",
                         )
                     )
                 if camera == 3:
+                    if self.use_ground_truth:
+                        self.null_check(self.data.depth_gt, "depth gt")
+                    else:
+                        self.null_check(self.data.depth_noisy, "depth noisy")
                     data_response.append(
-                        (self.data["depth"] if self.use_ground_truth else self.data["depth_noisy"], "xFLT",)
+                        (
+                            self.data.depth_gt
+                            if self.use_ground_truth
+                            else self.data.depth_noisy,
+                            "xFLT",
+                        )
                     )
 
             if tag == "tIMG":
-                metadata = self.data["metadata"] if self.use_ground_truth else self.data["metadata_noisy"]
+                metadata = (
+                    self.data.metadata_gt
+                    if self.use_ground_truth
+                    else self.data.metadata_noisy
+                )
             else:
                 metadata = struct.pack("I", 0)
         else:
@@ -289,6 +339,7 @@ class ImageServer:
         """ Receive client image requests and send back data. """
         while not rospy.is_shutdown():
             message, address = self.image_socket.recvfrom(1024)
+
             requested_data, metadata = self.unpack_data_request(message)
 
             # send response
