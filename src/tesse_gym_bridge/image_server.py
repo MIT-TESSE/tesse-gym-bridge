@@ -24,6 +24,7 @@
 import socket
 import struct
 import time
+import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -80,8 +81,13 @@ class ImageServer:
 
         self.initial_pose = None
 
+        # ensure these variables are initialized before starting the node
+        vars_to_init = ('rgb_left', )
+        if not self.use_ground_truth:
+            vars_to_init += ('segmentation_noisy', )
+
         # If current time is 0, advance game time so initial data is published
-        while self.data.rgb_left is None:
+        while any([getattr(self.data, v) is None for v in vars_to_init]):
             time.sleep(2)  # wait for TESSE to start.
             rospy.loginfo("Sending empty step message to advance game time")
             try:
@@ -236,7 +242,7 @@ class ImageServer:
                         )
                     )
                 if camera == 3:
-                    if self.use_ground_truth:
+                    if self.use_ground_truth or True:  # TODO (ZR) enable when kimera-semantics gives depth images
                         self.null_check(self.data.depth_gt, "depth gt")
                     else:
                         self.null_check(self.data.depth_noisy, "depth noisy")
@@ -250,11 +256,13 @@ class ImageServer:
                     )
 
             if tag == "tIMG":
-                metadata = (
-                    self.data.metadata_gt
-                    if self.use_ground_truth
-                    else self.data.metadata_noisy
-                )
+                metadata = self.data.metadata_gt
+                # TODO(ZR) enable when Kimera-VIO has reset flag
+                # (
+                #     self.data.metadata_gt
+                #     if self.use_ground_truth
+                #     else self.data.metadata_noisy
+                # )
             else:
                 metadata = struct.pack("I", 0)
         else:
