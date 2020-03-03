@@ -104,11 +104,13 @@ class MetadataServer:
                 response = bytearray()
                 response.extend("meta")
 
-                metadata = (
-                    self.data.metadata_gt
-                    if self.use_ground_truth
-                    else self.data.metadata_noisy
-                )
+                metadata = self.data.metadata_gt\
+                # TODO(ZR) enable when Kimera-VIO has reset flag
+                # (
+                #     self.data.metadata_gt
+                #     if self.use_ground_truth
+                #     else self.data.metadata_noisy
+                # )
                 response.extend(struct.pack("I", len(metadata)))
                 response.extend(metadata)
 
