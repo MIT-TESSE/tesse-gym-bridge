@@ -25,8 +25,8 @@ import socket
 import struct
 
 import rospy
+from std_msgs.msg import String
 from nav_msgs.msg import Odometry
-from tesse.utils import UdpListener
 
 from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
@@ -35,8 +35,9 @@ from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
 class MetadataServer:
     def __init__(self):
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
-        self.metadata_udp_port = rospy.get_param("~metadata_udp_port", 9004)
         self.metadata_port = rospy.get_param("~metadata_port", 9007)
+
+        self.metadata_gt_subscriber = rospy.Subscriber("/metadata", String, self.metadata_callback),
         self.nosy_pose_subscriber = rospy.Subscriber(
             "/kimera_vio_ros/odometry", Odometry, self.odometry_callback
         )
@@ -49,11 +50,6 @@ class MetadataServer:
 
         # store last received metadata
         self.data = TesseData()
-
-        # read UDP metadata broadcast from TESSE
-        self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
-        self.udp_listener.subscribe("catch_metadata", self.catch_udp_broadcast)
-        self.udp_listener.start()
 
         # initialize socket
         self.metadata_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -91,14 +87,12 @@ class MetadataServer:
             rospy.loginfo("Metadata server caught exception %s" % ex)
             self.data.metadata_noisy = ""
 
-    def catch_udp_broadcast(self, udp_metadata):
-        """ Capture metadata messages broadcast by TESSE. """
-        self.data.metadata_gt = udp_metadata
+    def metadata_callback(self, metadata_msg):
+        self.data.metadata_gt = metadata_msg.data
 
     def on_shutdown(self):
-        """ Close metadata server socket and udp listener. """
+        """ Close metadata server socket."""
         self.metadata_socket.close()
-        self.udp_listener.join()
 
     def spin(self):
         """ Receive client metadata request and response """

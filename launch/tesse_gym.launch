@@ -15,6 +15,7 @@
         <remap from="/metadata" to="/$(arg ns)/metadata"/>
         <remap from="/segmentation_noisy/image_raw" to="/semantic_segmentation/prediction_debug"/>
         <remap from="/depth_noisy/image_raw" to="/$(arg ns)/depth/image_raw"/>
+        <remap from="/metadata" to="/$(arg ns)/metadata"/>
     </node>
 
     <node name="tesse_gym_metadata_bridge" pkg="tesse_gym_bridge" type="metadata_server.py" output="screen">

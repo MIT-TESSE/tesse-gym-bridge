@@ -31,10 +31,10 @@ import rospy
 import tf
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry
+from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from tesse.env import Env
 from tesse.msgs import StepWithTransform
-from tesse.utils import UdpListener
 
 from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
@@ -46,7 +46,6 @@ VALID_MSG_TAGS = ["tIMG", "rIMG"]
 class ImageServer:
     def __init__(self):
         self.image_port = rospy.get_param("~image_port", 9008)
-        self.metadata_udp_port = rospy.get_param("~metadata_udp_port", 9004)
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.far_clip_plane = rospy.get_param("~far_clip_plane", 50.0)
 
@@ -58,6 +57,7 @@ class ImageServer:
             rospy.Subscriber("/segmentation_noisy/image_raw", Image, self.segmentation_noisy_cam_callback),
             rospy.Subscriber("/depth_noisy/image_raw", Image, self.depth_noisy_cam_callback),
 
+            rospy.Subscriber("/metadata", String, self.metadata_callback),
             rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback),
         ]
 
@@ -69,11 +69,6 @@ class ImageServer:
 
         # hold current data
         self.data = TesseData()
-
-        # read UDP metadata broadcast from TESSE
-        self.udp_listener = UdpListener(port=self.metadata_udp_port, rate=200)
-        self.udp_listener.subscribe("catch_metadata", self.catch_udp_broadcast)
-        self.udp_listener.start()
 
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -87,9 +82,12 @@ class ImageServer:
 
         # If current time is 0, advance game time so initial data is published
         while self.data.rgb_left is None:
-            time.sleep(2)  # wait for TESSE to start. TODO find more elegant way to do this
+            time.sleep(2)  # wait for TESSE to start.
             rospy.loginfo("Sending empty step message to advance game time")
-            Env().send(StepWithTransform(0, 0, 0))
+            try:
+                Env().send(StepWithTransform(0, 0, 0))
+            except socket.error as ex:
+                rospy.logerr("TESSE connection refused")
         rospy.loginfo("Interface initialized")
 
     def rosservice_change_data_source(self, request):
@@ -109,9 +107,8 @@ class ImageServer:
         return True
 
     def on_shutdown(self):
-        """ Close image server socket and udp listener. """
+        """ Close image server socket. """
         self.image_socket.close()
-        self.udp_listener.join()
 
     def odometry_callback(self, msg):
         """ Form metadata message containing noisy pose.
@@ -147,21 +144,17 @@ class ImageServer:
         return (255 * img).astype(np.uint8)
 
     def left_cam_callback(self, img):
-        """ Listen to left camera topic and save message. """
         self.data.rgb_left = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
 
     def right_cam_callback(self, img):
-        """ Listen to right camera topic and save message. """
         self.data.rgb_right = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
 
     def segmentation_cam_callback(self, img):
-        """ Listen to segmentation topic and save message. """
         self.data.segmentation_gt = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[
             ::-1
         ]
 
     def depth_cam_callback(self, img):
-        """ Listen to depth topic and save message. """
         # decoded image is in [0, far_clip_plane], map to [0, 1] for proper encoding
         depth_img = (
             self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1] / self.far_clip_plane
@@ -169,19 +162,16 @@ class ImageServer:
         self.data.depth_gt = self.encode_float_to_rgba(depth_img)
 
     def segmentation_noisy_cam_callback(self, img):
-        """ Listen to segmentation topic and save message. """
         self.data.segmentation_noisy = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[
             ::-1
         ]
 
     def depth_noisy_cam_callback(self, img):
-        """ Listen to depth topic and save message. """
         depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1]
         self.data.depth_noisy = self.encode_float_to_rgba(depth_img)
 
-    def catch_udp_broadcast(self, udp_metadata):
-        """ Capture metadata messages broadcast by TESSE. """
-        self.data.metadata_gt = udp_metadata
+    def metadata_callback(self, metadata_msg):
+        self.data.metadata_gt = metadata_msg.data
 
     def unpack_img_msg(self, img_msg):
         """ Unpack an image request message.
