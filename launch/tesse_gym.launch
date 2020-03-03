@@ -5,21 +5,24 @@
     <arg name="metadata_port" default="9007"/>
     <arg name="image_port" default="9008"/>
     <arg name="ns" default="tesse"/>
+    <arg name="use_ground_truth" default="true"/>
 
     <node name="tesse_gym_image_bridge" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
         <param name="image_port" value="$(arg image_port)"/>
+        <param name="use_ground_truth" value="$(arg use_ground_truth)"/>
         <remap from="/left_cam/image_raw" to="/$(arg ns)/left_cam_rgb/image_raw"/>
         <remap from="/right_cam/image_raw" to="/$(arg ns)/right_cam_rgb/image_raw"/>
         <remap from="/segmentation/image_raw" to="/$(arg ns)/segmentation/image_raw"/>
         <remap from="/depth/image_raw" to="/$(arg ns)/depth/image_raw"/>
         <remap from="/metadata" to="/$(arg ns)/metadata"/>
-        <remap from="/segmentation_noisy/image_raw" to="/semantic_segmentation/prediction_debug"/>
+        <remap from="/segmentation_noisy/image_raw" to="/semantic_segmentation/prediction_class_colored"/>
         <remap from="/depth_noisy/image_raw" to="/$(arg ns)/depth/image_raw"/>
         <remap from="/metadata" to="/$(arg ns)/metadata"/>
     </node>
 
     <node name="tesse_gym_metadata_bridge" pkg="tesse_gym_bridge" type="metadata_server.py" output="screen">
         <param name="metadata_port" value="$(arg metadata_port)"/>
+        <param name="use_ground_truth" value="$(arg use_ground_truth)"/>
         <remap from="/metadata" to="/tesse/metadata"/>
     </node>
 </launch>
