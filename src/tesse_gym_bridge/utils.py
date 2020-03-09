@@ -8,6 +8,7 @@ import tf
 
 # TESSE ROS bridge coordinate transforms
 
+# fmt: off
 enu_T_unity = np.array([[1, 0, 0, 0],
                         [0, 0, 1, 0],
                         [0, 1, 0, 0],
@@ -15,6 +16,7 @@ enu_T_unity = np.array([[1, 0, 0, 0],
 
 unity_T_enu = np.transpose(enu_T_unity)
 
+# fmt: off
 brh_T_blh = np.array([[1, 0, 0, 0],
                       [0, -1, 0, 0],
                       [0, 0, 1, 0],
@@ -64,9 +66,7 @@ def convert_pose_ros_to_unity(odom_msg):
     quat = odom_msg.pose.pose.orientation
 
     # convert position and quaternion to 4x4 transformation matrix
-    enu_brh = tf.transformations.quaternion_matrix(
-        np.array([quat.x, quat.y, quat.z, quat.w])
-    )
+    enu_brh = tf.transformations.quaternion_matrix(np.array([quat.x, quat.y, quat.z, quat.w]))
     enu_brh[:3, 3] = np.array([position.x, position.y, position.z])
 
     # ROS to Unity coordinate system transform
@@ -96,14 +96,10 @@ def metadata_from_odometry_msg(msg, gt_metadata):
 
     msg_root = ET.Element("TESSE_Agent_Metadata_v0.5")
     ET.SubElement(
-        msg_root,
-        "position",
-        {"x": str(position[0]), "y": str(position[1]), "z": str(position[2])},
+        msg_root, "position", {"x": str(position[0]), "y": str(position[1]), "z": str(position[2])},
     )
     ET.SubElement(
-        msg_root,
-        "quaternion",
-        {"x": str(quat[0]), "y": str(quat[1]), "z": str(quat[2]), "w": str(quat[3])},
+        msg_root, "quaternion", {"x": str(quat[0]), "y": str(quat[1]), "z": str(quat[2]), "w": str(quat[3])},
     )
     t = ET.SubElement(msg_root, "time")
     t.text = str(timestamp.to_sec())
@@ -117,16 +113,10 @@ def metadata_from_odometry_msg(msg, gt_metadata):
         ET.SubElement(
             msg_root,
             "collision",
-            {
-                "status": collision_msg.attrib["status"],
-                "name": collision_msg.attrib["name"],
-                "time": gt_metadata_time,
-            },
+            {"status": collision_msg.attrib["status"], "name": collision_msg.attrib["name"], "time": gt_metadata_time,},
         )
         ET.SubElement(
-            msg_root,
-            "collider",
-            {"status": collider_msg.attrib["status"], "time": gt_metadata_time},
+            msg_root, "collider", {"status": collider_msg.attrib["status"], "time": gt_metadata_time},
         )
 
     msg = ET.tostring(msg_root)
