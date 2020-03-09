@@ -6,10 +6,19 @@
     <arg name="image_port" default="9008"/>
     <arg name="ns" default="tesse"/>
     <arg name="use_ground_truth" default="true"/>
+    <arg name="run_segmentation_on_demand" default="true"/>
+    <arg name="model_type" default="TRTModel"/>
+    <arg name="weights" default="$(find semantic_segmentation_ros)cfg/goseek-v0.1.2/v3-unet-resnet18-epoch-12.onnx"/>
+    <arg name="publish_segmentation" default="true"/>
+
 
     <node name="tesse_gym_image_bridge" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
         <param name="image_port" value="$(arg image_port)"/>
         <param name="use_ground_truth" value="$(arg use_ground_truth)"/>
+        <param name="run_segmentation_on_demand" value="$(arg run_segmentation_on_demand)"/>
+        <param name="model_type" value="$(arg model_type)"/>
+        <param name="weights" value="$(arg weights)"/>
+        <param name="publish_segmentation" value="$(arg publish_segmentation)"/>
         <remap from="/left_cam/image_raw" to="/$(arg ns)/left_cam_rgb/image_raw"/>
         <remap from="/right_cam/image_raw" to="/$(arg ns)/right_cam_rgb/image_raw"/>
         <remap from="/segmentation/image_raw" to="/$(arg ns)/segmentation/image_raw"/>

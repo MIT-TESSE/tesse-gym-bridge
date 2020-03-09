@@ -4,11 +4,11 @@
     <arg name="kimera_semantics"      default="true"/>
     <arg name="kimera_vio"            default="true"/>
     <arg name="visualize"             default="false"/>
-    <arg name="semantic_segmentation" default="true"/>
+    <arg name="semantic_segmentation" default="false"/>
     <arg name="launch_tesse"          default="true"/>
 
     <!-- TESSE arguments -->
-    <arg name="tesse_path"              default="/home/za27933/tess/builds/goseek/v0.0.2/goseek-0.0.2.x86_64"/>
+    <arg name="tesse_path"              default=""/>
 
     <!-- TESSE ROS Bridge arguments -->
     <arg name="initial_scene"           default="1"/>
@@ -24,10 +24,10 @@
     <!-- TESSE Gym Bridge arguments -->
     <arg name="metadata_port"           default="9007"/>
     <arg name="image_port"              default="9008"/>
-    <arg name="use_ground_truth"        default="false"/>
+    <arg name="use_ground_truth"        default="true"/>
 
     <arg name="model"                   default="TRTModel"/>
-    <arg name="weight_file"             default="/home/za27933/tess/Kimera/catkin_ws/src/tesse-semantic-segmentation/cfg/goseek-v0.1.2/v3-unet-resnet18-epoch-12.onnx"/>
+    <arg name="weight_file"             default="$(find semantic_segmentation_ros)/cfg/goseek-v0.1.2/v3-unet-resnet18-epoch-12.onnx"/>
 
     <!-- Kimera VIO arguments -->
     <arg name="use_lcd"                 default="false"/>
@@ -53,7 +53,7 @@
     </include>
 
     <!-- Launch Gym ROS Interface -->
-    <include file="$(find tesse_gym_bridge)/launch/tesse_gym.launch">
+    <include file="$(find tesse_gym_bridge)/launch/tesse_gym_bridge.launch">
         <arg name="metadata_port"    value="$(arg metadata_port)"/>
         <arg name="image_port"       value="$(arg image_port)"/>
         <arg name="use_ground_truth" value="$(arg use_ground_truth)"/>
