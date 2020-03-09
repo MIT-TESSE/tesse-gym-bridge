@@ -37,15 +37,11 @@ class MetadataServer:
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.metadata_port = rospy.get_param("~metadata_port", 9007)
 
-        self.metadata_gt_subscriber = rospy.Subscriber("/metadata", String, self.metadata_callback),
-        self.nosy_pose_subscriber = rospy.Subscriber(
-            "/kimera_vio_ros/odometry", Odometry, self.odometry_callback
-        )
+        self.metadata_gt_subscriber = (rospy.Subscriber("/metadata", String, self.metadata_callback),)
+        self.nosy_pose_subscriber = rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback)
 
         self.data_source_service = rospy.Service(
-            "/tesse_gym_bridge/data_source_request",
-            DataSourceService,
-            self.rosservice_change_data_source,
+            "/tesse_gym_bridge/data_source_request", DataSourceService, self.rosservice_change_data_source,
         )
 
         # store last received metadata
@@ -80,9 +76,7 @@ class MetadataServer:
             msg (Odometry): Odometry message containing a noisy pose estimate.
         """
         try:
-            self.data.metadata_noisy = metadata_from_odometry_msg(
-                msg, self.data.metadata_gt
-            )
+            self.data.metadata_noisy = metadata_from_odometry_msg(msg, self.data.metadata_gt)
         except Exception as ex:
             rospy.loginfo("Metadata server caught exception %s" % ex)
             self.data.metadata_noisy = ""
@@ -104,8 +98,7 @@ class MetadataServer:
                 response = bytearray()
                 response.extend("meta")
 
-                metadata = self.data.metadata_gt\
-                # TODO(ZR) enable when Kimera-VIO has reset flag
+                metadata = self.data.metadata_gt  # TODO(ZR) enable when Kimera-VIO has reset flag
                 # (
                 #     self.data.metadata_gt
                 #     if self.use_ground_truth
