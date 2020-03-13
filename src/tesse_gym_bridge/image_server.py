@@ -96,7 +96,6 @@ class ImageServer:
         self.image_socket.settimeout(None)
         self.image_socket.bind(("", self.image_port))
 
-<<<<<<< HEAD
     def _wait_for_initialization(self):
         """ Wait for required variables to be initialized.
 
@@ -110,13 +109,6 @@ class ImageServer:
         vars_to_init = ("rgb_left",)
 
         # if waiting for external noisy segmentation
-=======
-        if self.run_segmentation_on_demand:
-            self.segmentation_model = get_model(model_type, weights)
-
-        # ensure these variables are initialized before starting the node
-        vars_to_init = ("rgb_left",)
->>>>>>> 343f63a8625e988e4c321c21adf6cac284ac7656
         if not self.use_ground_truth and not self.run_segmentation_on_demand:
             vars_to_init += ("segmentation_noisy",)
 
