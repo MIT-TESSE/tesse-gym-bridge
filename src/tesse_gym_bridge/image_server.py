@@ -38,8 +38,8 @@ from tesse.msgs import StepWithTransform
 from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
 
-from semantic_segmentation_ros.models import get_model
-from semantic_segmentation_ros.utils import get_class_colored_image
+from tesse_segmentation_ros.models import get_model
+from tesse_segmentation_ros.utils import get_class_colored_image
 
 
 IMG_MSG_LENGTH = 12
@@ -85,17 +85,31 @@ class ImageServer:
         # hold current data
         self.data = TesseData()
 
+        if self.run_segmentation_on_demand:
+            self.segmentation_model = get_model(model_type, weights)
+
+        # wait for required data to be initialized before setting up server
+        self._wait_for_initialization()
+
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.image_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.image_socket.settimeout(None)
         self.image_socket.bind(("", self.image_port))
 
-        if self.run_segmentation_on_demand:
-            self.segmentation_model = get_model(model_type, weights)
+    def _wait_for_initialization(self):
+        """ Wait for required variables to be initialized.
 
-        # ensure these variables are initialized before starting the node
+        Waits for
+            -rgb_left
+            TODO (more may come as the pipeline is polised)
+
+        to be initialized, ensuring there is data to send back to
+        clients upon request.
+        """
         vars_to_init = ("rgb_left",)
+
+        # if waiting for external noisy segmentation
         if not self.use_ground_truth and not self.run_segmentation_on_demand:
             vars_to_init += ("segmentation_noisy",)
 
