@@ -31,7 +31,7 @@
     <arg name="use_ground_truth"        default="true"/>
 
     <arg name="model"                   default="TRTModel"/>
-    <arg name="weight_file"             default="$(find tesse_segmentation_ros)/cfg/goseek-v0.1.2/v3-unet-resnet18-epoch-12.onnx"/>
+    <arg name="weight_file"             default="$(find tesse_segmentation_ros)/cfg/goseek-unet-a1.onnx"/>
 
     <!-- Kimera VIO arguments -->
     <arg name="use_lcd"                 default="false"/>
@@ -65,6 +65,8 @@
         <arg name="metadata_port"    value="$(arg metadata_port)"/>
         <arg name="image_port"       value="$(arg image_port)"/>
         <arg name="use_ground_truth" value="$(arg use_ground_truth)"/>
+        <arg name="model"       value="$(arg model)"/>
+        <arg name="weight_file" value="$(arg weight_file)"/>
     </include>
 
     <group if="$(arg semantic_segmentation)">
@@ -76,7 +78,7 @@
 
     <!-- Launch Kimera VIO -->
     <group if="$(arg kimera_vio)">
-        <include file="$(find kimera_vio_ros)/launch/kimera_ros_tesse.launch">
+        <include file="$(find kimera_vio_ros)/launch/kimera_vio_ros_tesse.launch">
             <arg name="use_lcd" value="$(arg use_lcd)"/>
         </include>
 

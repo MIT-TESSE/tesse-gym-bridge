@@ -7,8 +7,8 @@
     <arg name="ns"                         default="tesse"/>
     <arg name="use_ground_truth"           default="true"/>
     <arg name="run_segmentation_on_demand" default="true"/>
-    <arg name="model_type"                 default="TRTModel"/>
-    <arg name="weights"                    default="$(find tesse_segmentation_ros)/cfg/goseek-v0.1.2/v3-unet-resnet18-epoch-12.onnx"/>
+    <arg name="model"                      default="TRTModel"/>
+    <arg name="weight_file"                default=""/>
     <arg name="publish_segmentation"       default="true"/>
     <arg name="publish_depth"              default="true"/>
     <arg name="publish_mono_stereo"        default="true"/>
@@ -21,8 +21,8 @@
         <param name="image_port"                 value="$(arg image_port)"/>
         <param name="use_ground_truth"           value="$(arg use_ground_truth)"/>
         <param name="run_segmentation_on_demand" value="$(arg run_segmentation_on_demand)"/>
-        <param name="model_type"                 value="$(arg model_type)"/>
-        <param name="weights"                    value="$(arg weights)"/>
+        <param name="model_type"                 value="$(arg model)"/>
+        <param name="weights"                    value="$(arg weight_file)"/>
         <param name="publish_segmentation"       value="$(arg publish_segmentation)"/>
         <param name="publish_depth"              value="$(arg publish_depth)"/>
         <param name="publish_mono_stereo"        value="$(arg publish_mono_stereo)"/>
