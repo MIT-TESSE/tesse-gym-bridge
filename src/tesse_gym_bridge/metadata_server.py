@@ -26,6 +26,7 @@ import struct
 
 import rospy
 from std_msgs.msg import String
+from std_srvs.srv import Trigger
 from nav_msgs.msg import Odometry
 
 from tesse_gym_bridge.srv import DataSourceService
@@ -36,6 +37,7 @@ class MetadataServer:
     def __init__(self):
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.metadata_port = rospy.get_param("~metadata_port", 9007)
+        self.vio_restart_service = rospy.get_param("~vio_restart_service", "/kimera_vio_ros/kimera_vio_ros_node/restart_kimera_vio")
 
         self.metadata_gt_subscriber = (rospy.Subscriber("/metadata", String, self.metadata_callback),)
         self.nosy_pose_subscriber = rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback)
@@ -112,6 +114,9 @@ class MetadataServer:
                 metadata_send_socket.send(response)
                 metadata_send_socket.close()
             elif message == "sRES":
+                rospy.wait_for_service(self.vio_restart_service)
+                restart_kimera_vio = rospy.ServiceProxy(self.vio_restart_service, Trigger)
+                success = restart_kimera_vio()
                 rospy.loginfo("Setting new episode")
             else:
                 rospy.logerror("Unknown tag: %s" % message)
