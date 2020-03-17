@@ -95,6 +95,7 @@ def metadata_from_odometry_msg(msg, gt_metadata):
     timestamp = msg.header.stamp
 
     msg_root = ET.Element("TESSE_Agent_Metadata_v0.5")
+
     ET.SubElement(
         msg_root, "position", {"x": str(position[0]), "y": str(position[1]), "z": str(position[2])},
     )
@@ -118,6 +119,10 @@ def metadata_from_odometry_msg(msg, gt_metadata):
         ET.SubElement(
             msg_root, "collider", {"status": collider_msg.attrib["status"], "time": gt_metadata_time},
         )
+
+    # flag to indicate this is an estimate
+    noisy_tag = ET.SubElement(msg_root, "noisy_pose")
+    noisy_tag.text = "true"
 
     msg = ET.tostring(msg_root)
     return msg
