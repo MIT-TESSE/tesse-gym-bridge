@@ -37,13 +37,21 @@ class MetadataServer:
     def __init__(self):
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.metadata_port = rospy.get_param("~metadata_port", 9007)
-        self.vio_restart_service = rospy.get_param("~vio_restart_service", "/kimera_vio_ros/kimera_vio_ros_node/restart_kimera_vio")
+        self.vio_restart_service = rospy.get_param(
+            "~vio_restart_service", "/kimera_vio_ros/kimera_vio_ros_node/restart_kimera_vio",
+        )
 
-        self.metadata_gt_subscriber = (rospy.Subscriber("/metadata", String, self.metadata_callback),)
-        self.nosy_pose_subscriber = rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback)
+        self.metadata_gt_subscriber = (
+            rospy.Subscriber("/metadata", String, self.metadata_callback),
+        )
+        self.nosy_pose_subscriber = rospy.Subscriber(
+            "/kimera_vio_ros/odometry", Odometry, self.odometry_callback
+        )
 
         self.data_source_service = rospy.Service(
-            "/tesse_gym_bridge/data_source_request", DataSourceService, self.rosservice_change_data_source,
+            "/tesse_gym_bridge/data_source_request",
+            DataSourceService,
+            self.rosservice_change_data_source,
         )
 
         # store last received metadata
@@ -86,6 +94,11 @@ class MetadataServer:
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
+        # initialize metadata with ground truth
+        # TODO(ZR) initialize this with origin
+        if self.data.metadata_noisy is None:
+            self.data.metadata_noisy = metadata_msg.data
+
     def on_shutdown(self):
         """ Close metadata server socket."""
         self.metadata_socket.close()
@@ -100,12 +113,10 @@ class MetadataServer:
                 response = bytearray()
                 response.extend("meta")
 
-                metadata = self.data.metadata_gt  # TODO(ZR) enable when Kimera-VIO has reset flag
-                # (
-                #     self.data.metadata_gt
-                #     if self.use_ground_truth
-                #     else self.data.metadata_noisy
-                # )
+                metadata = (
+                    self.data.metadata_gt if self.use_ground_truth else self.data.metadata_noisy
+                )
+
                 response.extend(struct.pack("I", len(metadata)))
                 response.extend(metadata)
 

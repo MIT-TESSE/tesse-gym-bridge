@@ -63,14 +63,18 @@ class ImageServer:
             rospy.Subscriber("/right_cam/image_raw", Image, self.right_cam_callback),
             rospy.Subscriber("/segmentation/image_raw", Image, self.segmentation_cam_callback),
             rospy.Subscriber("/depth/image_raw", Image, self.depth_cam_callback),
-            rospy.Subscriber("/segmentation_noisy/image_raw", Image, self.segmentation_noisy_cam_callback),
+            rospy.Subscriber(
+                "/segmentation_noisy/image_raw", Image, self.segmentation_noisy_cam_callback
+            ),
             rospy.Subscriber("/depth_noisy/image_raw", Image, self.depth_noisy_cam_callback),
             rospy.Subscriber("/metadata", String, self.metadata_callback),
             rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback),
         ]
 
         self.data_source_service = rospy.Service(
-            "/tesse_gym_bridge/data_source_request", DataSourceService, self.rosservice_change_data_source,
+            "/tesse_gym_bridge/data_source_request",
+            DataSourceService,
+            self.rosservice_change_data_source,
         )
 
         if self.publish_segmentation:
@@ -148,12 +152,7 @@ class ImageServer:
         Args:
             msg (Odometry): Odometry message containing a noisy pose estimate.
         """
-        try:
-            # TODO check
-            self.data.metadata_noisy = metadata_from_odometry_msg(msg, self.data.metadata_gt)
-        except Exception as ex:
-            rospy.loginfo("Image server caught exception %s" % ex)
-            self.data.metadata_noisy = ""
+        self.data.metadata_noisy = metadata_from_odometry_msg(msg, self.data.metadata_gt)
 
     @staticmethod
     def encode_float_to_rgba(img):
@@ -195,6 +194,11 @@ class ImageServer:
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
+        # initialize noisy metadata with ground truth for testing
+        # TODO(ZR) initialize this with origin
+        if self.data.metadata_noisy is None:
+            self.data.metadata_noisy = metadata_msg.data
+
     def unpack_img_msg(self, img_msg):
         """ Unpack an image request message.
 
@@ -205,7 +209,9 @@ class ImageServer:
             Tuple[int, int, int]: IDs for camera, compression, and number
                 of channels.
         """
-        assert len(img_msg) == 12, "recieved image message of length %d, require length 12" % len(img_msg)
+        assert len(img_msg) == 12, "recieved image message of length %d, require length 12" % len(
+            img_msg
+        )
         camera = struct.unpack("<i", img_msg[0:4])[0]
         compression = struct.unpack("<i", img_msg[4:8])[0]
         channels = struct.unpack("<i", img_msg[8:])[0]
@@ -233,7 +239,9 @@ class ImageServer:
 
         if tag in VALID_MSG_TAGS:
             for msg_index in np.arange(4, len(message), 12):
-                camera, compression, channels = self.unpack_img_msg(message[msg_index : msg_index + IMG_MSG_LENGTH])
+                camera, compression, channels = self.unpack_img_msg(
+                    message[msg_index : msg_index + IMG_MSG_LENGTH]
+                )
                 if camera == 0:
                     self.null_check(self.data.rgb_left, "rgb left")
                     data_response.append((self.data.rgb_left, "xRGB"))
@@ -246,7 +254,12 @@ class ImageServer:
                     else:
                         self.null_check(self.data.segmentation_noisy, "segmentation noisy")
                     data_response.append(  # TODO error check
-                        (self.data.segmentation_gt if self.use_ground_truth else self.data.segmentation_noisy, "xRGB",)
+                        (
+                            self.data.segmentation_gt
+                            if self.use_ground_truth
+                            else self.data.segmentation_noisy,
+                            "xRGB",
+                        )
                     )
                 if camera == 3:
                     use_gt = self.use_ground_truth or True
@@ -254,16 +267,14 @@ class ImageServer:
                         self.null_check(self.data.depth_gt, "depth gt")
                     else:
                         self.null_check(self.data.depth_noisy, "depth noisy")
-                    data_response.append((self.data.depth_gt if use_gt else self.data.depth_noisy, "xFLT",))
+                    data_response.append(
+                        (self.data.depth_gt if use_gt else self.data.depth_noisy, "xFLT",)
+                    )
 
             if tag == "tIMG":
-                metadata = self.data.metadata_gt
-                # TODO(ZR) enable when Kimera-VIO has reset flag
-                # (
-                #     self.data.metadata_gt
-                #     if self.use_ground_truth
-                #     else self.data.metadata_noisy
-                # )
+                metadata = (
+                    self.data.metadata_gt if self.use_ground_truth else self.data.metadata_noisy
+                )
             else:
                 metadata = struct.pack("I", 0)
         else:
@@ -366,7 +377,9 @@ class ImageServer:
                     self.cv_bridge.cv2_to_imgmsg(self.data.rgb_left[::-1].astype(np.uint8), "rgb8")
                 )
                 self.segmentation_pubs[1].publish(
-                    self.cv_bridge.cv2_to_imgmsg(self.data.segmentation_noisy[::-1].astype(np.uint8), "rgb8")
+                    self.cv_bridge.cv2_to_imgmsg(
+                        self.data.segmentation_noisy[::-1].astype(np.uint8), "rgb8"
+                    )
                 )
 
 
