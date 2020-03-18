@@ -30,7 +30,7 @@ from std_srvs.srv import Trigger
 from nav_msgs.msg import Odometry
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
+from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization
 
 
 class MetadataServer:
@@ -105,6 +105,12 @@ class MetadataServer:
 
     def spin(self):
         """ Receive client metadata request and response """
+
+        # wait for required data to be initialized before setting up server
+        vars_to_init = ("metadata_gt",)
+        wait_for_initialization(self.data, vars_to_init)
+        rospy.loginfo("Metadata server initialized")
+
         while not rospy.is_shutdown():
             message, address = self.metadata_socket.recvfrom(1024)
 

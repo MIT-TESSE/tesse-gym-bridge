@@ -36,7 +36,7 @@ from tesse.env import Env
 from tesse.msgs import StepWithTransform
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg
+from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization
 
 from tesse_segmentation_ros.models import get_model
 from tesse_segmentation_ros.utils import get_class_colored_image
@@ -72,15 +72,13 @@ class ImageServer:
         ]
 
         self.data_source_service = rospy.Service(
-            "/tesse_gym_bridge/data_source_request",
-            DataSourceService,
-            self.rosservice_change_data_source,
+            "data_source_request", DataSourceService, self.rosservice_change_data_source,
         )
 
         if self.publish_segmentation:
             self.segmentation_pubs = [
-                rospy.Publisher("/tesse_gym_bridge/rgb_left", Image, queue_size=10),
-                rospy.Publisher("/tesse_gym_bridge/segmentation", Image, queue_size=10),
+                rospy.Publisher("rgb_left", Image, queue_size=10),
+                rospy.Publisher("segmentation", Image, queue_size=10),
             ]
 
         self.cv_bridge = CvBridge()
@@ -91,40 +89,11 @@ class ImageServer:
         if self.run_segmentation_on_demand:
             self.segmentation_model = get_model(model_type, weights)
 
-        # wait for required data to be initialized before setting up server
-        self._wait_for_initialization()
-
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.image_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.image_socket.settimeout(None)
         self.image_socket.bind(("", self.image_port))
-
-    def _wait_for_initialization(self):
-        """ Wait for required variables to be initialized.
-
-        Waits for
-            -rgb_left
-            TODO (more may come as the pipeline is polised)
-
-        to be initialized, ensuring there is data to send back to
-        clients upon request.
-        """
-        vars_to_init = ("rgb_left",)
-
-        # if waiting for external noisy segmentation
-        if not self.use_ground_truth and not self.run_segmentation_on_demand:
-            vars_to_init += ("segmentation_noisy",)
-
-        # If current time is 0, advance game time so initial data is published
-        while any([getattr(self.data, v) is None for v in vars_to_init]):
-            time.sleep(2)  # wait for TESSE to start.
-            rospy.loginfo("Sending empty step message to advance game time")
-            try:
-                Env().send(StepWithTransform(0, 0, 0))
-            except socket.error as ex:  # if TESSE is not initialized
-                rospy.loginfo("TESSE connection refused")
-        rospy.loginfo("Interface initialized")
 
     def rosservice_change_data_source(self, request):
         """ Change between ground truth and noisy data modes.
@@ -355,6 +324,17 @@ class ImageServer:
 
     def spin(self):
         """ Receive client image requests and send back data. """
+
+        # wait for required data to be initialized before setting up server
+        vars_to_init = ("rgb_left",)
+
+        # if waiting for external noisy segmentation
+        if not self.use_ground_truth and not self.run_segmentation_on_demand:
+            vars_to_init += ("segmentation_noisy",)
+
+        wait_for_initialization(self.data, vars_to_init)
+        rospy.loginfo("Image server initialized")
+
         while not rospy.is_shutdown():
             message, address = self.image_socket.recvfrom(1024)
 

@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
+import time
+import socket
 import xml.etree.ElementTree as ET
 
 import numpy as np
+import rospy
+from tesse.env import Env
+from tesse.msgs import StepWithTransform
+
 
 import tf
 
@@ -128,6 +134,27 @@ def metadata_from_odometry_msg(msg, gt_metadata):
     return msg
 
 
+def wait_for_initialization(data, vars_to_init):
+    """ Wait for variables in `data` to be initialized.
+
+    Args:
+        data (TesseData): Object to store variables.
+        vars_to_init (Tuple[str]): Requires these variables in
+            `data` to be initialized.
+
+    to be initialized, ensuring there is data to send back to
+    clients upon request.
+    """
+    # If current time is 0, advance game time so initial data is published
+    while not data.all_initialized(vars_to_init):
+        time.sleep(2)  # wait for TESSE to start.
+        rospy.loginfo("Sending empty step message to advance game time")
+        try:
+            Env().send(StepWithTransform(0, 0, 0))
+        except socket.error:  # if TESSE is not initialized
+            rospy.loginfo("TESSE connection refused")
+
+
 class TesseData:
     """ Class to hold TESSE Data"""
 
@@ -142,6 +169,17 @@ class TesseData:
         self._depth_noisy = None
         self._metadata_noisy = None
 
+    def all_initialized(self, vars):
+        """ Check if all variables given in `vars`
+        are initialized.
+        
+        Args:
+            vars (Tuple[str]): Variables to check.
+            
+        Returns:
+            bool: True if all variables in `vars` are 
+                initialized. False otherwise. """
+        return not any([getattr(self, v) is None for v in vars])
     @property
     def rgb_left(self):
         return self._rgb_left
