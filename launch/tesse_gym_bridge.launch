@@ -2,9 +2,10 @@
 <launch>
 
     <!-- Set ports -->
+    <arg name="ns"                         default="tesse_gym_bridge"/>
     <arg name="metadata_port"              default="9007"/>
     <arg name="image_port"                 default="9008"/>
-    <arg name="ns"                         default="tesse"/>
+    <arg name="subscription_ns"            default="tesse"/>
     <arg name="use_ground_truth"           default="true"/>
     <arg name="run_segmentation_on_demand" default="true"/>
     <arg name="model"                      default="TRTModel"/>
@@ -15,7 +16,7 @@
     <arg name="publish_metadata"           default="true"/>
 
 
-    <node name="tesse_gym_image_bridge" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
+    <node ns="$(arg ns)" name="image_server" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
 
         <!-- Set parameters -->
         <param name="image_port"                 value="$(arg image_port)"/>
@@ -28,20 +29,20 @@
         <param name="publish_mono_stereo"        value="$(arg publish_mono_stereo)"/>
 
         <!-- remap subscriptions -->
-        <remap from="/left_cam/image_raw"           to="/$(arg ns)/left_cam/image_raw"/>
-        <remap from="/right_cam/image_raw"          to="/$(arg ns)/right_cam/image_raw"/>
-        <remap from="/segmentation/image_raw"       to="/$(arg ns)/segmentation/image_raw"/>
-        <remap from="/depth/image_raw"              to="/$(arg ns)/depth/image_raw"/>
-        <remap from="/metadata"                     to="/$(arg ns)/metadata"/>
+        <remap from="/left_cam/image_raw"           to="/$(arg subscription_ns)/left_cam/image_raw"/>
+        <remap from="/right_cam/image_raw"          to="/$(arg subscription_ns)/right_cam/image_raw"/>
+        <remap from="/segmentation/image_raw"       to="/$(arg subscription_ns)/segmentation/image_raw"/>
+        <remap from="/depth/image_raw"              to="/$(arg subscription_ns)/depth/image_raw"/>
+        <remap from="/metadata"                     to="/$(arg subscription_ns)/metadata"/>
         <remap from="/segmentation_noisy/image_raw" to="/semantic_segmentation/prediction_class_colored"/>
-        <remap from="/depth_noisy/image_raw"        to="/$(arg ns)/depth/image_raw"/>
-        <remap from="/metadata"                     to="/$(arg ns)/metadata"/>
+        <remap from="/depth_noisy/image_raw"        to="/$(arg subscription_ns)/depth/image_raw"/>
+        <remap from="/metadata"                     to="/$(arg subscription_ns)/metadata"/>
     </node>
 
-    <node name="tesse_gym_metadata_bridge" pkg="tesse_gym_bridge" type="metadata_server.py" output="screen">
+    <node ns="$(arg ns)" name="metadata_server" pkg="tesse_gym_bridge" type="metadata_server.py" output="screen">
         <param name="metadata_port"    value="$(arg metadata_port)"/>
         <param name="use_ground_truth" value="$(arg use_ground_truth)"/>
-        <remap from="/metadata"        to="/tesse/metadata"/>
+        <remap from="/metadata"        to="/$(arg subscription_ns)/metadata"/>
     </node>
 </launch>
 
