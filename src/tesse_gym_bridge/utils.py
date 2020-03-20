@@ -6,6 +6,8 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 import rospy
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseWithCovariance
 from tesse.env import Env
 from tesse.msgs import StepWithTransform
 
@@ -31,6 +33,21 @@ brh_T_blh = np.array([[1, 0, 0, 0],
 blh_T_brh = np.transpose(brh_T_blh)
 
 gravity_enu = [0.0, 0.0, -9.81]  # in 'world' frame
+
+
+def get_origin_odom_msg():
+    """ Get ros odometry message at origin.
+
+    Returns:
+        Odometry: ROR odometry message with
+            position = (0, 0, 0) and
+            quaternion = (0, 0, 0, 1)
+    """
+    msg = Odometry()
+    pose = PoseWithCovariance()
+    pose.pose.orientation.w = 1
+    msg.pose = pose
+    return msg
 
 
 def enu_brh_to_unity_blh(enu_brh):
@@ -172,12 +189,12 @@ class TesseData:
     def all_initialized(self, vars):
         """ Check if all variables given in `vars`
         are initialized.
-        
+
         Args:
             vars (Tuple[str]): Variables to check.
-            
+
         Returns:
-            bool: True if all variables in `vars` are 
+            bool: True if all variables in `vars` are
                 initialized. False otherwise. """
         return not any([getattr(self, v) is None for v in vars])
     @property

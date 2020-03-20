@@ -36,7 +36,7 @@ from tesse.env import Env
 from tesse.msgs import StepWithTransform
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization
+from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization, get_origin_odom_msg
 
 from tesse_segmentation_ros.models import get_model
 from tesse_segmentation_ros.utils import get_class_colored_image
@@ -163,10 +163,9 @@ class ImageServer:
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
-        # initialize noisy metadata with ground truth for testing
-        # TODO(ZR) initialize this with origin
+        # initialize noisy metadata at origin
         if self.data.metadata_noisy is None:
-            self.data.metadata_noisy = metadata_msg.data
+            self.data.metadata_noisy = metadata_from_odometry_msg(get_origin_odom_msg(), self.data.metadata_gt)
 
     def unpack_img_msg(self, img_msg):
         """ Unpack an image request message.

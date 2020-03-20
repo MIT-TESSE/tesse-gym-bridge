@@ -30,7 +30,7 @@ from std_srvs.srv import Trigger
 from nav_msgs.msg import Odometry
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization
+from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization, get_origin_odom_msg
 
 
 class MetadataServer:
@@ -94,10 +94,9 @@ class MetadataServer:
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
-        # initialize metadata with ground truth
-        # TODO(ZR) initialize this with origin
+        # initialize noisy metadata at origin
         if self.data.metadata_noisy is None:
-            self.data.metadata_noisy = metadata_msg.data
+            self.data.metadata_noisy = metadata_from_odometry_msg(get_origin_odom_msg(), self.data.metadata_gt)
 
     def on_shutdown(self):
         """ Close metadata server socket."""
