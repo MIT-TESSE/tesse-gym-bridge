@@ -30,7 +30,12 @@ from std_srvs.srv import Trigger
 from nav_msgs.msg import Odometry
 
 from tesse_gym_bridge.srv import DataSourceService
-from tesse_gym_bridge.utils import TesseData, metadata_from_odometry_msg, wait_for_initialization, get_origin_odom_msg
+from tesse_gym_bridge.utils import (
+    TesseData,
+    metadata_from_odometry_msg,
+    wait_for_initialization,
+    get_origin_odom_msg,
+)
 
 
 class MetadataServer:
@@ -49,9 +54,11 @@ class MetadataServer:
         )
 
         self.data_source_service = rospy.Service(
-            "/tesse_gym_bridge/data_source_request",
-            DataSourceService,
-            self.rosservice_change_data_source,
+            "data_source_request", DataSourceService, self.rosservice_change_data_source,
+        )
+
+        self.episode_reset_service = rospy.Service(
+            "metadata_server_episode_reset", Trigger, self.episode_reset_service,
         )
 
         # store last received metadata
@@ -79,6 +86,20 @@ class MetadataServer:
         self.use_ground_truth = request.use_gt
         return True
 
+    def episode_reset_service(self, trigger):
+        """ Called on episode reset.
+
+        This will re-initialize the pose estimate to
+            position = (0, 0, 0)
+            quaternion = (0, 0, 0, 1)
+        """
+        # TODO(ZR) add error checking for ground truth metadata
+        self.data.metadata_noisy = metadata_from_odometry_msg(
+            get_origin_odom_msg(), self.data.metadata_gt
+        )
+
+        return True, ""
+
     def odometry_callback(self, msg):
         """ Form metadata message containing noisy pose.
 
@@ -96,7 +117,34 @@ class MetadataServer:
 
         # initialize noisy metadata at origin
         if self.data.metadata_noisy is None:
-            self.data.metadata_noisy = metadata_from_odometry_msg(get_origin_odom_msg(), self.data.metadata_gt)
+            self.data.metadata_noisy = metadata_from_odometry_msg(
+                get_origin_odom_msg(), self.data.metadata_gt
+            )
+
+    def call_reset_episode_services(self):
+        """ Call required services upon episode reset. 
+
+        Calls
+            - Kimera-VIO-ROS reset: Resets VIO state
+            - tesse-gym-bridge episode reset: Resets the 
+                pose estimate to origin
+        """
+        # kimera-vio-ros
+        rospy.wait_for_service(self.vio_restart_service)
+        restart_kimera_vio = rospy.ServiceProxy(self.vio_restart_service, Trigger)
+        success = restart_kimera_vio()
+
+        # image and metadata server
+        tesse_gym_bridge_img_reset_service = "/tesse_gym_bridge/image_server_episode_reset"
+        rospy.wait_for_service(tesse_gym_bridge_img_reset_service)
+        restart_image_server = rospy.ServiceProxy(tesse_gym_bridge_img_reset_service, Trigger)
+        success = restart_image_server()
+
+        # metadata server
+        tesse_gym_bridge_metadata_reset_service = "/tesse_gym_bridge/metadata_server_episode_reset"
+        rospy.wait_for_service(tesse_gym_bridge_metadata_reset_service)
+        restart_image_server = rospy.ServiceProxy(tesse_gym_bridge_metadata_reset_service, Trigger)
+        success = restart_image_server()
 
     def on_shutdown(self):
         """ Close metadata server socket."""
@@ -130,9 +178,7 @@ class MetadataServer:
                 metadata_send_socket.send(response)
                 metadata_send_socket.close()
             elif message == "sRES":
-                rospy.wait_for_service(self.vio_restart_service)
-                restart_kimera_vio = rospy.ServiceProxy(self.vio_restart_service, Trigger)
-                success = restart_kimera_vio()
+                self.call_reset_episode_services()
                 rospy.loginfo("Setting new episode")
             else:
                 rospy.logerror("Unknown tag: %s" % message)
