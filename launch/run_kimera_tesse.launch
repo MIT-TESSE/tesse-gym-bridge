@@ -24,7 +24,6 @@
     <arg name="publish_mono_stereo"     default="false"/>
     <arg name="publish_metadata"        default="true"/>
 
-
     <!-- TESSE Gym Bridge arguments -->
     <arg name="metadata_port"           default="9007"/>
     <arg name="image_port"              default="9008"/>
@@ -36,7 +35,7 @@
     <!-- Kimera VIO arguments -->
     <arg name="use_lcd"                 default="false"/>
 
-    <!-- Kimera Semantics arguments -->
+    <!-- Kimera Semantics / Kimera VIO arguments -->
     <arg name="run_stereo_dense" default="true"/>
 
     <!-- Launch TESSE -->
@@ -80,6 +79,7 @@
     <group if="$(arg kimera_vio)">
         <include file="$(find kimera_vio_ros)/launch/kimera_vio_ros_tesse.launch">
             <arg name="use_lcd" value="$(arg use_lcd)"/>
+            <arg name="run_stereo_dense" value="$(arg run_stereo_dense)"/>
         </include>
 
         <!-- Kimera VIO Visualization -->

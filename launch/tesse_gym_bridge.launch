@@ -17,7 +17,6 @@
 
 
     <node ns="$(arg ns)" name="image_server" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
-
         <!-- Set parameters -->
         <param name="image_port"                 value="$(arg image_port)"/>
         <param name="use_ground_truth"           value="$(arg use_ground_truth)"/>
@@ -35,7 +34,7 @@
         <remap from="/depth/image_raw"              to="/$(arg subscription_ns)/depth/image_raw"/>
         <remap from="/metadata"                     to="/$(arg subscription_ns)/metadata"/>
         <remap from="/segmentation_noisy/image_raw" to="/semantic_segmentation/prediction_class_colored"/>
-        <remap from="/depth_noisy/image_raw"        to="/$(arg subscription_ns)/depth/image_raw"/>
+        <remap from="/depth_noisy/image_raw"        to="/stereo_gray/disparity_image_proc/depth/image_raw"/>
         <remap from="/metadata"                     to="/$(arg subscription_ns)/metadata"/>
     </node>
 
