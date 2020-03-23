@@ -1,4 +1,4 @@
-# gym-ros-interface
+# tesse-gym-bridge
 
 An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from perception modules.
 
