@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
-import time
 import socket
+import time
 import xml.etree.ElementTree as ET
 
 import numpy as np
+
 import rospy
-from nav_msgs.msg import Odometry
+import tf
 from geometry_msgs.msg import PoseWithCovariance
+from nav_msgs.msg import Odometry
+from std_srvs.srv import Trigger
 from tesse.env import Env
 from tesse.msgs import StepWithTransform
-
-
-import tf
 
 # TESSE ROS bridge coordinate transforms
 
@@ -171,6 +171,14 @@ def wait_for_initialization(data, vars_to_init):
         except socket.error:  # if TESSE is not initialized
             rospy.loginfo("TESSE connection refused")
 
+def call_trigger_service(service_name):
+    """
+    Returns:
+        TriggerResponse
+    """
+    rospy.wait_for_service(service_name)
+    trigger_service = rospy.ServiceProxy(service_name, Trigger)
+    return trigger_service()
 
 class TesseData:
     """ Class to hold TESSE Data"""

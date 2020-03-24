@@ -14,6 +14,7 @@
     <arg name="publish_depth"              default="true"/>
     <arg name="publish_mono_stereo"        default="true"/>
     <arg name="publish_metadata"           default="true"/>
+    <arg name="vio_restart"                default="/kimera_vio_ros/kimera_vio_ros_node/restart_kimera_vio"/>
 
 
     <node ns="$(arg ns)" name="image_server" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
@@ -28,19 +29,20 @@
         <param name="publish_mono_stereo"        value="$(arg publish_mono_stereo)"/>
 
         <!-- remap subscriptions -->
-        <remap from="/left_cam/image_raw"           to="/$(arg subscription_ns)/left_cam/image_raw"/>
-        <remap from="/right_cam/image_raw"          to="/$(arg subscription_ns)/right_cam/image_raw"/>
-        <remap from="/segmentation/image_raw"       to="/$(arg subscription_ns)/segmentation/image_raw"/>
-        <remap from="/depth/image_raw"              to="/$(arg subscription_ns)/depth/image_raw"/>
-        <remap from="/metadata"                     to="/$(arg subscription_ns)/metadata"/>
-        <remap from="/segmentation_noisy/image_raw" to="/semantic_segmentation/prediction_class_colored"/>
-        <remap from="/depth_noisy/image_raw"        to="/stereo_gray/disparity_image_proc/depth/image_raw"/>
-        <remap from="/metadata"                     to="/$(arg subscription_ns)/metadata"/>
+        <remap from="/left_cam/image_raw"              to="/$(arg subscription_ns)/left_cam/image_raw"/>
+        <remap from="/right_cam/image_raw"             to="/$(arg subscription_ns)/right_cam/image_raw"/>
+        <remap from="/segmentation/image_raw"          to="/$(arg subscription_ns)/segmentation/image_raw"/>
+        <remap from="/depth/image_raw"                 to="/$(arg subscription_ns)/depth/image_raw"/>
+        <remap from="/metadata"                        to="/$(arg subscription_ns)/metadata"/>
+        <remap from="/segmentation_estimate/image_raw" to="/semantic_segmentation/prediction_class_colored"/>
+        <remap from="/depth_noisy/image_raw"           to="/stereo_gray/disparity_image_proc/depth/image_raw"/>
+        <remap from="/metadata"                        to="/$(arg subscription_ns)/metadata"/>
     </node>
 
     <node ns="$(arg ns)" name="metadata_server" pkg="tesse_gym_bridge" type="metadata_server.py" output="screen">
         <param name="metadata_port"    value="$(arg metadata_port)"/>
         <param name="use_ground_truth" value="$(arg use_ground_truth)"/>
+        <param name="vio_restart"      value="$(arg vio_restart)"/>
         <remap from="/metadata"        to="/$(arg subscription_ns)/metadata"/>
     </node>
 </launch>

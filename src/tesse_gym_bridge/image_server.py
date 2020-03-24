@@ -30,22 +30,21 @@ import numpy as np
 import rospy
 from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
-from sensor_msgs.msg import Image
 from tesse.env import Env
 from tesse.msgs import StepWithTransform
+from tesse_segmentation_ros.models import get_model
+from tesse_segmentation_ros.utils import get_class_colored_image
 
 from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import (
     TesseData,
+    get_origin_odom_msg,
     metadata_from_odometry_msg,
     wait_for_initialization,
-    get_origin_odom_msg,
 )
-
-from tesse_segmentation_ros.models import get_model
-from tesse_segmentation_ros.utils import get_class_colored_image
 
 IMG_MSG_LENGTH = 12
 VALID_MSG_TAGS = ["tIMG", "rIMG"]
@@ -70,7 +69,7 @@ class ImageServer:
             rospy.Subscriber("/segmentation/image_raw", Image, self.segmentation_cam_callback),
             rospy.Subscriber("/depth/image_raw", Image, self.depth_cam_callback),
             rospy.Subscriber(
-                "/segmentation_noisy/image_raw", Image, self.segmentation_noisy_cam_callback
+                "/segmentation_estimate/image_raw", Image, self.segmentation_noisy_cam_callback
             ),
             rospy.Subscriber("/depth_noisy/image_raw", Image, self.depth_noisy_cam_callback),
             rospy.Subscriber("/metadata", String, self.metadata_callback),
@@ -128,7 +127,6 @@ class ImageServer:
             position = (0, 0, 0)
             quaternion = (0, 0, 0, 1)
         """
-        # TODO(ZR) add error checking for ground truth metadata
         self.data.metadata_noisy = metadata_from_odometry_msg(
             get_origin_odom_msg(), self.data.metadata_gt
         )
@@ -175,7 +173,6 @@ class ImageServer:
     def depth_cam_callback(self, img):
         # decoded image is in [0, far_clip_plane], map to [0, 1] for proper encoding
         depth_img = self.cv_bridge.imgmsg_to_cv2(img, "32FC1")[::-1] / self.far_clip_plane
-        rospy.loginfo("gt depth has max: %f" % (depth_img.max() * self.far_clip_plane))
         self.data.depth_gt = self.encode_float_to_rgba(depth_img)
 
     def segmentation_noisy_cam_callback(self, img):
@@ -184,15 +181,13 @@ class ImageServer:
     def depth_noisy_cam_callback(self, img):
         depth_img = self.cv_bridge.imgmsg_to_cv2(img, "passthrough")[::-1]
         depth_img = np.nan_to_num(depth_img)
-        depth_img /= self.far_clip_plane
-        rospy.loginfo("depth est has max: %f" % (depth_img.max() * self.far_clip_plane))
+        depth_img /= self.far_clip_plane  # TODO(ZR) double check this step
         self.data.depth_noisy = self.encode_float_to_rgba(depth_img)
 
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
-        # initialize noisy metadata at origin
-        # TODO: try forming this upon request
+        # initialize pose estimate at origin
         if self.data.metadata_noisy is None:
             self.data.metadata_noisy = metadata_from_odometry_msg(
                 get_origin_odom_msg(), self.data.metadata_gt
@@ -222,15 +217,19 @@ class ImageServer:
             rospy.logerr("Variable %s is none" % var_name)
 
     def _get_segmentation_img_response(self):
-        import time
-
+        """ Get semantic segmentation image and proper encoding. 
+        
+        Returns:
+            Tuple[np.ndarray - shape=(H, W, 3), str]: Image as 
+                numpy array and required encoding (RGB).
+        """
         if self.use_ground_truth:
             segmentation_img = self.data.segmentation_gt
         else:
+            # if requested, run segmentation inference on the latest rgb image
+            # otherwise, just use the most recent segmentation estimate
             if self.run_segmentation_on_demand:
-                t1 = time.time()
                 self.data.segmentation_noisy = self.segmentation_inference(self.data.rgb_left)
-                rospy.loginfo("Segmentation inference took %f" % (time.time() - t1))
             segmentation_img = self.data.segmentation_noisy.astype(np.uint8)
 
         self.null_check(segmentation_img, "Segmentation image")
@@ -240,6 +239,13 @@ class ImageServer:
         )
 
     def _get_depth_img_response(self):
+        """ Get semantic depth image and proper encoding. 
+        
+        Returns:
+            Tuple[np.ndarray - shape=(H, W, 4), str]: Image as 
+                numpy array and required encoding (RGB). Float32 
+                depth image is encoded over uint8 RGBA image.
+        """
         depth_img = self.data.depth_gt if self.use_ground_truth else self.data.depth_noisy
         if self.use_ground_truth:
             depth_img = self.data.depth_gt
@@ -378,6 +384,22 @@ class ImageServer:
         seg = seg[::-1]  # flip columns back
         return seg
 
+    def _send_image_message(self, return_payload):
+        image_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        image_send_socket.connect(("", self.image_port))
+        image_send_socket.send(return_payload)
+        image_send_socket.close()
+
+    def _publish_rgb_and_segmentation(self):
+        self.segmentation_pubs[0].publish(
+            self.cv_bridge.cv2_to_imgmsg(self.data.rgb_left[::-1].astype(np.uint8), "rgb8")
+        )
+        self.segmentation_pubs[1].publish(
+            self.cv_bridge.cv2_to_imgmsg(
+                self.data.segmentation_noisy[::-1].astype(np.uint8), "rgb8"
+            )
+        )
+
     def spin(self):
         """ Receive client image requests and send back data. """
         import time
@@ -397,28 +419,13 @@ class ImageServer:
 
             t1 = time.time()
             requested_data, metadata = self.unpack_data_request(message)
-            rospy.loginfo("unpack took: %f" % (time.time() - t1))
-
-            # form bytearray payload
-            t2 = time.time()
             return_payload = self.form_multi_image_response(requested_data, metadata)
-            rospy.loginfo("form payload took: %f" % (time.time() - t2))
+            rospy.loginfo("response took: %f" % (time.time() - t1))
 
-            # send response
-            image_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            image_send_socket.connect(("", self.image_port))
-            image_send_socket.send(return_payload)
-            image_send_socket.close()
+            self._send_image_message(return_payload)
 
             if self.publish_segmentation:
-                self.segmentation_pubs[0].publish(
-                    self.cv_bridge.cv2_to_imgmsg(self.data.rgb_left[::-1].astype(np.uint8), "rgb8")
-                )
-                self.segmentation_pubs[1].publish(
-                    self.cv_bridge.cv2_to_imgmsg(
-                        self.data.segmentation_noisy[::-1].astype(np.uint8), "rgb8"
-                    )
-                )
+                self._publish_rgb_and_segmentation()
 
 
 if __name__ == "__main__":
