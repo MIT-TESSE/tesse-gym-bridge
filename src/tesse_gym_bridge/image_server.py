@@ -65,6 +65,14 @@ class ImageServer:
         model_type = rospy.get_param("~model_type", "")
         weights = rospy.get_param("~weights", "")
 
+        self.cv_bridge = CvBridge()
+
+        # hold current data
+        self.data = TesseData()
+
+        if self.run_segmentation_on_demand:
+            self.segmentation_model = get_model(model_type, weights)
+
         self.subscribers = [
             rospy.Subscriber("/left_cam/image_raw", Image, self.left_cam_callback),
             rospy.Subscriber("/right_cam/image_raw", Image, self.right_cam_callback),
@@ -91,14 +99,6 @@ class ImageServer:
                 rospy.Publisher("rgb_left", Image, queue_size=10),
                 rospy.Publisher("segmentation", Image, queue_size=10),
             ]
-
-        self.cv_bridge = CvBridge()
-
-        # hold current data
-        self.data = TesseData()
-
-        if self.run_segmentation_on_demand:
-            self.segmentation_model = get_model(model_type, weights)
 
         # set up image socket
         self.image_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
