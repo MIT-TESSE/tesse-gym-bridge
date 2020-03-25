@@ -55,6 +55,8 @@ class ImageServer:
         self.image_port = rospy.get_param("~image_port", 9008)
         self.use_ground_truth = rospy.get_param("~use_ground_truth", True)
         self.far_clip_plane = rospy.get_param("~far_clip_plane", 50.0)
+        self.image_height = rospy.get_param("~image_height", 240)
+        self.image_width = rospy.get_param("~image_width", 320)
 
         # If set to true, run semantic segmentation only upon client request
         # this reduces unnecessary computation
@@ -126,6 +128,13 @@ class ImageServer:
         This will re-initialize the pose estimate to
             position = (0, 0, 0)
             quaternion = (0, 0, 0, 1)
+
+        Args:
+            trigger (Trigger): ROS Trigger service message.
+
+        Returns:
+            Tuple[bool, str]: True if reset was a success, 
+                empty message (to fulfill Trigger interface).
         """
         self.data.metadata_noisy = metadata_from_odometry_msg(
             get_origin_odom_msg(), self.data.metadata_gt
@@ -254,7 +263,7 @@ class ImageServer:
 
             # send empty depth image if estimate is not initialized
             if depth_img is None:
-                depth_img = np.zeros(self.data.depth_gt.shape)
+                depth_img = np.zeros((self.image_height, self.image_width, 4))  # depth is RGBA
 
         depth_img = depth_img.astype(np.float32)
 
