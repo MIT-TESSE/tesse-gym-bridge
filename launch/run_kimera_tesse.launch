@@ -19,15 +19,15 @@
     <arg name="far_draw_dist"           default="50"/>
     <arg name="enable_step_mode"        default="true"/>
     <arg name="node_delay"              default="5.0"/>
-    <arg name="publish_segmentation"    default="true"/>
-    <arg name="publish_depth"           default="true"/>
+    <arg name="publish_segmentation"    default="false"/>
+    <arg name="publish_depth"           default="false"/>
     <arg name="publish_mono_stereo"     default="false"/>
     <arg name="publish_metadata"        default="true"/>
 
     <!-- TESSE Gym Bridge arguments -->
     <arg name="metadata_port"           default="9007"/>
     <arg name="image_port"              default="9008"/>
-    <arg name="use_ground_truth"        default="true"/>
+    <arg name="use_ground_truth"        default="false"/>
 
     <arg name="model"                   default="TRTModel"/>
     <arg name="weight_file"             default="$(find tesse_segmentation_ros)/cfg/goseek-unet-a1.onnx"/>
