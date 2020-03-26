@@ -1,8 +1,0 @@
-## Data source service
-
-# Request fields
-bool use_gt  # true to use ground truth data, false to use noisy data
----
-
-# Response fields
-bool success  # true if request was completed, otherwise false

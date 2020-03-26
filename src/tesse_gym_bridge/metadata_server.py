@@ -28,8 +28,7 @@ import struct
 import rospy
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
-from std_srvs.srv import Trigger
-from tesse_gym_bridge.srv import DataSourceService
+from std_srvs.srv import Trigger, SetBool
 from tesse_gym_bridge.utils import (
     TesseData,
     call_trigger_service,
@@ -55,7 +54,7 @@ class MetadataServer:
         )
 
         self.data_source_service = rospy.Service(
-            "data_source_request", DataSourceService, self.rosservice_change_data_source,
+            "use_ground_truth", SetBool, self.rosservice_change_data_source,
         )
 
         self.episode_reset_service = rospy.Service(
@@ -79,12 +78,12 @@ class MetadataServer:
         depth, and position estimates are given instead.
 
         Args:
-            request (DataSourceServie): ROS service data source.
+            request (ChangeDataSource): ROS SetBool message.
 
         Returns:
             bool: True, indicating successful service call.
         """
-        self.use_ground_truth = request.use_gt
+        self.use_ground_truth = request.data
         return True
 
     def episode_reset_service(self, trigger):

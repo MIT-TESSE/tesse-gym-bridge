@@ -31,13 +31,12 @@ from cv_bridge import CvBridge
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
-from std_srvs.srv import Trigger
+from std_srvs.srv import Trigger, SetBool
 from tesse.env import Env
 from tesse.msgs import StepWithTransform
 from tesse_segmentation_ros.models import get_model
 from tesse_segmentation_ros.utils import get_class_colored_image
 
-from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import (
     TesseData,
     get_origin_odom_msg,
@@ -86,7 +85,7 @@ class ImageServer:
         ]
 
         self.data_source_service = rospy.Service(
-            "data_source_request", DataSourceService, self.rosservice_change_data_source,
+            "use_ground_truth", SetBool, self.rosservice_change_data_source,
         )
 
         self.episode_reset_service = rospy.Service(
@@ -113,12 +112,12 @@ class ImageServer:
         depth, and position estimates are given instead.
 
         Args:
-            request (DataSourceServie): ROS service data source.
+            request (SetBool): ROS SetBool message.
 
         Returns:
             bool: True, indicating successful service call.
         """
-        self.use_ground_truth = request.use_gt
+        self.use_ground_truth = request.data
         return True
 
     def episode_reset_service(self, trigger):
