@@ -23,7 +23,6 @@
 
 import socket
 import struct
-import time
 
 import numpy as np
 
@@ -325,9 +324,6 @@ class ImageServer:
         Returns:
             bytearray: Encoded image and associated metadata.
         """
-        import time
-
-        t1 = time.time()
         img_data = img_data.astype(np.uint8)
         img_height, img_width, channels = img_data.shape
 
@@ -346,8 +342,6 @@ class ImageServer:
         img_payload.extend(img_type)
         img_payload.extend(2 * list("null"))  # 8 byte empty sequence
         img_payload.extend(img_data)
-
-        rospy.loginfo("Form image response took: %f" % (time.time() - t1))
 
         return img_payload
 
@@ -411,7 +405,6 @@ class ImageServer:
 
     def spin(self):
         """ Receive client image requests and send back data. """
-        import time
 
         # wait for required data to be initialized before setting up server
         vars_to_init = ("rgb_left",)
@@ -426,10 +419,8 @@ class ImageServer:
         while not rospy.is_shutdown():
             message, address = self.image_socket.recvfrom(1024)
 
-            t1 = time.time()
             requested_data, metadata = self.unpack_data_request(message)
             return_payload = self.form_multi_image_response(requested_data, metadata)
-            rospy.loginfo("response took: %f" % (time.time() - t1))
 
             self._send_image_message(return_payload)
 
