@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-15"?>
 <launch>
     <!-- Specify what to run -->
-    <arg name="kimera_semantics"      default="true"/>
+    <arg name="kimera_semantics"      default="false"/>
     <arg name="kimera_vio"            default="true"/>
     <arg name="visualize"             default="false"/>
     <arg name="semantic_segmentation" default="false"/>
