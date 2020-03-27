@@ -26,6 +26,7 @@ import socket
 import struct
 
 import rospy
+from rospy.exceptions import ROSException
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
@@ -137,7 +138,10 @@ class MetadataServer:
             - tesse-gym-bridge episode reset: Resets the 
                 pose estimate to origin
         """
-        call_trigger_service(self.vio_restart_service)
+        try:
+            call_trigger_service(self.vio_restart_service, timeout=2)
+        except ROSException:
+            rospy.loginfo("Kimera VIO reset cannot be reached")
         call_trigger_service("/tesse_gym_bridge/image_server_episode_reset")
         call_trigger_service("/tesse_gym_bridge/metadata_server_episode_reset")
 

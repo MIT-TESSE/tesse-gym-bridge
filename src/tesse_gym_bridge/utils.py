@@ -171,12 +171,12 @@ def wait_for_initialization(data, vars_to_init):
         except socket.error:  # if TESSE is not initialized
             rospy.loginfo("TESSE connection refused")
 
-def call_trigger_service(service_name):
+def call_trigger_service(service_name, timeout=None):
     """
     Returns:
         TriggerResponse
     """
-    rospy.wait_for_service(service_name)
+    rospy.wait_for_service(service_name, timeout=timeout)
     trigger_service = rospy.ServiceProxy(service_name, Trigger)
     return trigger_service()
 
