@@ -34,6 +34,7 @@
 
     <!-- Kimera VIO arguments -->
     <arg name="use_lcd"                 default="false"/>
+    <arg name="log_vio_output"          default="true"/>
 
     <!-- Kimera Semantics / Kimera VIO arguments -->
     <arg name="run_stereo_dense" default="true"/>
@@ -78,8 +79,9 @@
     <!-- Launch Kimera VIO -->
     <group if="$(arg kimera_vio)">
         <include file="$(find kimera_vio_ros)/launch/kimera_vio_ros_tesse.launch">
-            <arg name="use_lcd" value="$(arg use_lcd)"/>
+            <arg name="use_lcd"          value="$(arg use_lcd)"/>
             <arg name="run_stereo_dense" value="$(arg run_stereo_dense)"/>
+            <arg name="log_output"       value="$(arg log_vio_output)"/>
         </include>
 
         <!-- Kimera VIO Visualization -->
