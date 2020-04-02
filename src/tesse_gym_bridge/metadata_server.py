@@ -32,6 +32,7 @@ from std_msgs.msg import String
 from std_srvs.srv import Trigger
 from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import (
+    CollisionInfo,
     TesseData,
     call_trigger_service,
     get_origin_odom_msg,
@@ -65,6 +66,12 @@ class MetadataServer:
 
         # store last received metadata
         self.data = TesseData()
+        self.last_odom_msg = get_origin_odom_msg()
+
+        # track collisions since last metadata query
+        # TESSE only sends collision information once so that a
+        # collision isn't recounted.
+        self.last_collision_info = None
 
         # initialize socket
         self.metadata_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -102,9 +109,11 @@ class MetadataServer:
             Tuple[bool, str]: True if reset was a success, 
                 empty message (to fulfill Trigger interface).
         """
-        # TODO(ZR) add error checking for ground truth metadata
+        if self.last_collision_info is not None:
+            self.last_collision_info.set_collision_false()
+        
         self.data.metadata_noisy = metadata_from_odometry_msg(
-            get_origin_odom_msg(), self.data.metadata_gt
+            get_origin_odom_msg(), self.last_collision_info
         )
 
         return True, ""
@@ -116,18 +125,29 @@ class MetadataServer:
             msg (Odometry): Odometry message containing a pose estimate.
         """
         try:
-            self.data.metadata_noisy = metadata_from_odometry_msg(msg, self.data.metadata_gt)
+            self.last_odom_msg = msg
+            self.data.metadata_noisy = metadata_from_odometry_msg(
+                self.last_odom_msg, self.last_collision_info
+            )
         except Exception as ex:
             rospy.loginfo("Metadata server caught exception %s" % ex)
-            self.data.metadata_noisy = ""
 
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
-        # initialize noisy metadata at origin
+        if self.last_collision_info is None:
+            self.last_collision_info = CollisionInfo(self.data.metadata_gt)
+        else:
+            self.last_collision_info.update_collision_info(self.data.metadata_gt)
+
+        # initialize pose estimate at (x, y, yaw) = (0, 0, 0)
         if self.data.metadata_noisy is None:
             self.data.metadata_noisy = metadata_from_odometry_msg(
-                get_origin_odom_msg(), self.data.metadata_gt
+                get_origin_odom_msg(), self.last_collision_info
+            )
+        else:  # update noisy metadata with time and collision information 
+            self.data.metadata_noisy = metadata_from_odometry_msg(
+                self.last_odom_msg, self.last_collision_info
             )
 
     def call_reset_episode_services(self):
@@ -157,6 +177,8 @@ class MetadataServer:
         Returns:
             bytearry: Metadata response.
         """
+        self.last_collision_info.set_collision_false()
+
         response = bytearray()
         response.extend("meta")
         metadata = self.data.metadata_gt if self.use_ground_truth else self.data.metadata_noisy
@@ -168,7 +190,7 @@ class MetadataServer:
         """ Send metadata message to client.
 
         Args:
-            response (bytearra): Response to send to client.
+            response (bytearray): Response to send to client.
         """
         try:
             metadata_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

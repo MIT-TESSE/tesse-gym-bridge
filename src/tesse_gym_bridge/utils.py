@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from collections import namedtuple
 import socket
 import time
 import xml.etree.ElementTree as ET
@@ -24,7 +25,7 @@ enu_T_unity = np.array([[1, 0, 0, 0],
 
 unity_T_enu = np.transpose(enu_T_unity)
 
-# fmt: off
+
 brh_T_blh = np.array([[1, 0, 0, 0],
                       [0, -1, 0, 0],
                       [0, 0, 1, 0],
@@ -33,7 +34,90 @@ brh_T_blh = np.array([[1, 0, 0, 0],
 blh_T_brh = np.transpose(brh_T_blh)
 
 gravity_enu = [0.0, 0.0, -9.81]  # in 'world' frame
+# fmt: on
 
+
+class CollisionInfo:
+    def __init__(self, metadata):
+        """ Class to handle collision information.
+
+        Upon a collision, TESSE sets a collision
+        flag in it's metadata message to true. This is 
+        held until it is read by a client, after which 
+        the flag is set to false. This class  
+        mirrors that logic for clients interacting with
+        `image_server.py` and `metadata_server.py`.
+
+        Args:
+            metadata (str): TESSE metadata message.
+        """
+        (
+            metadata_time,
+            collision_status,
+            collision_name,
+            collider_status,
+        ) = self.parse_metadata_for_collisions(metadata)
+        self.time = metadata_time
+        self.collision_status = collision_status
+        self.collision_name = collision_name
+        self.collider_status = collider_status
+
+    def set_collision_false(self):
+        """ Set collision status to false.
+
+        This sets `self.collision_status` to 
+        false and `self.collision_name` to ""
+        """
+        self.collision_status = "false"
+        self.collision_name = ""
+
+    def update_collision_info(self, metadata):
+        """ Set collision status true
+
+        Args:
+            metadata (str): TESSE metadata.
+        """
+        (
+            metadata_time,
+            collision_status,
+            collision_name,
+            collider_status,
+        ) = self.parse_metadata_for_collisions(metadata)
+
+        self.time = metadata_time
+        self.collider_status = collider_status
+
+        if collision_status == "true":
+            self.collision_status = "true"
+            self.collision_name = collision_name
+
+    def parse_metadata_for_collisions(self, metadata):
+        """ Get collider status from TESSE metadata message.
+
+        This includes:
+            1. A boolean indicating if the agent is in a collision. 
+            2. If the agent has collided with an object, 
+                that object's name. 
+            3. The agent's collider status.
+            3. A timestamp.
+
+        Args:
+            metadata (str): TESSE metadata message
+        
+        Returns:
+            CollisionInfo: Object holding collision information.
+        """
+        metadata_root = ET.fromstring(metadata)
+        metadata_time = metadata_root.find("time").text
+        collision_msg = metadata_root.find("collision")
+        collider_msg = metadata_root.find("collider")
+
+        return (
+            metadata_time,
+            collision_msg.attrib["status"],
+            collision_msg.attrib["name"],
+            collider_msg.attrib["status"],
+        )
 
 def get_origin_odom_msg():
     """ Get ros odometry message at origin.
@@ -89,7 +173,9 @@ def convert_pose_ros_to_unity(odom_msg):
     quat = odom_msg.pose.pose.orientation
 
     # convert position and quaternion to 4x4 transformation matrix
-    enu_brh = tf.transformations.quaternion_matrix(np.array([quat.x, quat.y, quat.z, quat.w]))
+    enu_brh = tf.transformations.quaternion_matrix(
+        np.array([quat.x, quat.y, quat.z, quat.w])
+    )
     enu_brh[:3, 3] = np.array([position.x, position.y, position.z])
 
     # ROS to Unity coordinate system transform
@@ -101,13 +187,14 @@ def convert_pose_ros_to_unity(odom_msg):
     return position, quat
 
 
-def metadata_from_odometry_msg(msg, gt_metadata):
+def metadata_from_odometry_msg(msg, collision_info=None):
     """ Turn odometry message into TESSE gt_metadata message
 
     Args:
         msg (Odometry): ROS odometry message.
-        gt_metadata (string): Ground truth TESSE metadata used to
-            populate collision and time information.
+        collision_info (ColliderInfo): Collision information 
+            to add to metadata message. If `None`, collision
+            information is not added the the message.
 
     Returns:
         str: Metadata message containing position and orientation
@@ -120,27 +207,32 @@ def metadata_from_odometry_msg(msg, gt_metadata):
     msg_root = ET.Element("TESSE_Agent_Metadata_v0.5")
 
     ET.SubElement(
-        msg_root, "position", {"x": str(position[0]), "y": str(position[1]), "z": str(position[2])},
+        msg_root,
+        "position",
+        {"x": str(position[0]), "y": str(position[1]), "z": str(position[2])},
     )
     ET.SubElement(
-        msg_root, "quaternion", {"x": str(quat[0]), "y": str(quat[1]), "z": str(quat[2]), "w": str(quat[3])},
+        msg_root,
+        "quaternion",
+        {"x": str(quat[0]), "y": str(quat[1]), "z": str(quat[2]), "w": str(quat[3])},
     )
     t = ET.SubElement(msg_root, "time")
     t.text = str(timestamp.to_sec())
-    # TODO velocity
 
-    if gt_metadata is not None:
-        gt_metadata_root = ET.fromstring(gt_metadata)
-        gt_metadata_time = gt_metadata_root.find("time").text
-        collision_msg = gt_metadata_root.find("collision")
-        collider_msg = gt_metadata_root.find("collider")
+    if collision_info is not None:
         ET.SubElement(
             msg_root,
             "collision",
-            {"status": collision_msg.attrib["status"], "name": collision_msg.attrib["name"], "time": gt_metadata_time,},
+            {
+                "status": collision_info.collision_status,
+                "name": collision_info.collision_name,
+                "time": collision_info.time,
+            },
         )
         ET.SubElement(
-            msg_root, "collider", {"status": collider_msg.attrib["status"], "time": gt_metadata_time},
+            msg_root,
+            "collider",
+            {"status": collision_info.collider_status, "time": collision_info.time},
         )
 
     # flag to indicate this is an estimate
@@ -171,6 +263,7 @@ def wait_for_initialization(data, vars_to_init):
         except socket.error:  # if TESSE is not initialized
             rospy.loginfo("TESSE connection refused")
 
+
 def call_trigger_service(service_name, timeout=None):
     """
     Returns:
@@ -179,6 +272,7 @@ def call_trigger_service(service_name, timeout=None):
     rospy.wait_for_service(service_name, timeout=timeout)
     trigger_service = rospy.ServiceProxy(service_name, Trigger)
     return trigger_service()
+
 
 class TesseData:
     """ Class to hold TESSE Data"""
@@ -205,6 +299,7 @@ class TesseData:
             bool: True if all variables in `vars` are
                 initialized. False otherwise. """
         return not any([getattr(self, v) is None for v in vars])
+
     @property
     def rgb_left(self):
         return self._rgb_left

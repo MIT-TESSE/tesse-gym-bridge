@@ -39,6 +39,7 @@ from tesse_segmentation_ros.utils import get_class_colored_image
 
 from tesse_gym_bridge.srv import DataSourceService
 from tesse_gym_bridge.utils import (
+    CollisionInfo,
     TesseData,
     get_origin_odom_msg,
     metadata_from_odometry_msg,
@@ -68,6 +69,12 @@ class ImageServer:
 
         # hold current data
         self.data = TesseData()
+        self.last_odom_msg = get_origin_odom_msg()
+
+        # track collisions since last metadata query
+        # TESSE only sends collision information once so that a
+        # collision isn't recounted.
+        self.last_collision_info = None
 
         if self.run_segmentation_on_demand:
             self.segmentation_model = get_model(model_type, weights)
@@ -77,9 +84,7 @@ class ImageServer:
             rospy.Subscriber("/right_cam/image_raw", Image, self.right_cam_callback),
             rospy.Subscriber("/segmentation/image_raw", Image, self.segmentation_cam_callback),
             rospy.Subscriber("/depth/image_raw", Image, self.depth_cam_callback),
-            rospy.Subscriber(
-                "/segmentation_estimate/image_raw", Image, self.segmentation_noisy_cam_callback
-            ),
+            rospy.Subscriber("/segmentation_estimate/image_raw", Image, self.segmentation_noisy_cam_callback),
             rospy.Subscriber("/depth_noisy/image_raw", Image, self.depth_noisy_cam_callback),
             rospy.Subscriber("/metadata", String, self.metadata_callback),
             rospy.Subscriber("/kimera_vio_ros/odometry", Odometry, self.odometry_callback),
@@ -135,8 +140,10 @@ class ImageServer:
             Tuple[bool, str]: True if reset was a success, 
                 empty message (to fulfill Trigger interface).
         """
+        if self.last_collision_info is not None:
+            self.last_collision_info.set_collision_false()
         self.data.metadata_noisy = metadata_from_odometry_msg(
-            get_origin_odom_msg(), self.data.metadata_gt
+            get_origin_odom_msg(), self.last_collision_info
         )
 
         return True, ""
@@ -151,7 +158,10 @@ class ImageServer:
         Args:
             msg (Odometry): Odometry message containing a noisy pose estimate.
         """
-        self.data.metadata_noisy = metadata_from_odometry_msg(msg, self.data.metadata_gt)
+        self.last_odom_msg = msg
+        self.data.metadata_noisy = metadata_from_odometry_msg(
+            self.last_odom_msg, self.last_collision_info
+        )
 
     @staticmethod
     def encode_float_to_rgba(img):
@@ -195,10 +205,19 @@ class ImageServer:
     def metadata_callback(self, metadata_msg):
         self.data.metadata_gt = metadata_msg.data
 
-        # initialize pose estimate at origin
+        if self.last_collision_info is None:
+            self.last_collision_info = CollisionInfo(self.data.metadata_gt)
+        else:
+            self.last_collision_info.update_collision_info(self.data.metadata_gt)
+
+        # initialize pose estimate at (x, y, yaw) = (0, 0, 0)
         if self.data.metadata_noisy is None:
             self.data.metadata_noisy = metadata_from_odometry_msg(
-                get_origin_odom_msg(), self.data.metadata_gt
+                get_origin_odom_msg(), self.last_collision_info
+            )
+        else:  # update noisy metadata with time and collision information
+            self.data.metadata_noisy = metadata_from_odometry_msg(
+                self.last_odom_msg, self.last_collision_info
             )
 
     def unpack_img_msg(self, img_msg):
@@ -273,6 +292,7 @@ class ImageServer:
         )
 
     def _get_metadata_response(self):
+        self.last_collision_info.set_collision_false()
         return self.data.metadata_gt if self.use_ground_truth else self.data.metadata_noisy
 
     def unpack_data_request(self, message):
