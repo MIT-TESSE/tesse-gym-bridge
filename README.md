@@ -18,11 +18,11 @@ catkin init
 
 # clone repo
 cd src
-git clone git@github.mit.edu:TESS/gym-ros-interface.git
+git clone git@github.mit.edu:TESS/tesse-gym-bridge.git
 
 # install dependencies
 wstool init
-wstool merge gym-ros-interface/install/tesse_gym_bridge.rosinstall 
+wstool merge gym-ros-interface/install/tesse-gym-bridge.rosinstall 
 cd ..
 
 # compile
@@ -38,33 +38,18 @@ source ~/catkin_ws/devel/setup.bash
 
 Please refer to their installation guide.
 
+3. Install [tesse-interface](https://github.com/MIT-TESSE/tesse-interface) 
 
-3. Install [tesse-interface](https://github.mit.edu/TESS/tesse-interface/tree/feature/rgb-metadata) and switch to branch `feature/rgb-metadata`
+4. Install [tesse-gym](https://github.com/MIT-TESSE/tesse-gym)
 
-Follow the tesse-interface [installation instructions](https://github.mit.edu/TESS/tesse-interface) then:
-
-```sh
-cd ~/catkin_ws/src/tesse-interface
-git checkout feature/rgb-metadata 
-```
-
-4. Install [tesse-gym](https://github.mit.edu/TESS/tesse-gym)
-This isn't a ROS package, so you don't have to install it into your `catkin_ws`
-
-```sh
-cd ~/your_directory
-git clone git@github.mit.edu:TESS/tesse-gym.git
-cd tesse-gym
-python setup.py develop
-```
 
 
 ## Usage
 
-To run TESSE, Kimera-VIO, and Kimera-Semantics, and the required interfaces
+To run TESSE, Kimera-VIO, and Kimera-Semantics, and the required interfaces start the simulator and then run:
 
 ```sh
-roslaunch tesse_gym_bridge run_kimera_tesse.launch tesse_path:=TESSE_BUILD_PATH
+roslaunch tesse_gym_bridge run_goseek_perception.launch
 ```
 
 To control the TESSE agent through the Gym environment, run see the [move-agent](./notebooks/move-agent.ipynb) notebook
