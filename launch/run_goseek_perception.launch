@@ -33,6 +33,7 @@
     <arg name="log_vio_output"          default="true"/>
 
     <!-- Kimera Semantics / Kimera VIO arguments -->
+    <!-- TODO(ZR) put this only in Kimera Semantics when ready -->
     <arg name="run_stereo_dense" default="true"/>
 
     <!-- Launch TESSE ROS bridge -->
@@ -83,7 +84,7 @@
     <!-- Launch Kimera Semantics -->
     <group if="$(arg kimera_semantics)">
         <!-- Note: we need a way to pass scene segmentation labels -->
-        <include file="$(find tesse_gym_bridge)/launch/kimera_semantics_v3_1_dense.launch">
+        <include file="$(find tesse_gym_bridge)/launch/kimera_semantics_goseek.launch">
             <remap from="/tesse/segmentation"  to="/tesse/segmentation/image_raw"/>
             <arg name="run_stereo_dense"       value="$(arg run_stereo_dense)"/>
         </include>
