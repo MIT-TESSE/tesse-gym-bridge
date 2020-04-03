@@ -5,10 +5,6 @@
     <arg name="kimera_vio"            default="true"/>
     <arg name="visualize"             default="false"/>
     <arg name="semantic_segmentation" default="false"/>
-    <arg name="launch_tesse"          default="false"/>
-
-    <!-- TESSE arguments -->
-    <arg name="tesse_path"              default=""/>
 
     <!-- TESSE ROS Bridge arguments -->
     <arg name="initial_scene"           default="1"/>
@@ -39,11 +35,6 @@
     <!-- Kimera Semantics / Kimera VIO arguments -->
     <arg name="run_stereo_dense" default="true"/>
 
-    <!-- Launch TESSE -->
-    <node name="launch_tesse" pkg="tesse_gym_bridge" type="launch_tesse.py" if="$(arg launch_tesse)">
-        <param name="tesse_path" value="$(arg tesse_path)"/>
-    </node>
-
     <!-- Launch TESSE ROS bridge -->
    <include file="$(find tesse_ros_bridge)/launch/tesse_bridge.launch">
         <arg name="initial_scene"        value="$(arg initial_scene)"/>
@@ -57,7 +48,6 @@
         <arg name="publish_depth"        value="$(arg publish_depth)"/>
         <arg name="publish_mono_stereo"  value="$(arg publish_mono_stereo)"/>
         <arg name="publish_metadata"     value="$(arg publish_metadata)"/>
-
     </include>
 
     <!-- Launch Gym ROS Interface -->
@@ -70,7 +60,7 @@
     </include>
 
     <group if="$(arg semantic_segmentation)">
-        <include file="$(find tesse_segmentation_ros)/launch/semantic_segmentation_tesse.launch">
+        <include file="$(find tesse_segmentation_ros)/launch/tesse_segmentation_ros.launch">
             <arg name="model"       value="$(arg model)"/>
             <arg name="weight_file" value="$(arg weight_file)"/>
         </include>
