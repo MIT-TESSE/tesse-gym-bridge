@@ -159,7 +159,7 @@ class MetadataServer:
                 pose estimate to origin
         """
         try:
-            call_trigger_service(self.vio_restart_service, timeout=2)
+            call_trigger_service(self.vio_restart_service, timeout=1)
         except ROSException:
             rospy.loginfo("Kimera VIO reset cannot be reached")
         call_trigger_service("/tesse_gym_bridge/image_server_episode_reset")
