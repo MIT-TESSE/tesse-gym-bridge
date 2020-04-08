@@ -10,10 +10,7 @@
     <arg name="run_segmentation_on_demand" default="true"/>
     <arg name="model"                      default="TRTModel"/>
     <arg name="weight_file"                default=""/>
-    <arg name="publish_segmentation"       default="true"/>
-    <arg name="publish_depth"              default="true"/>
-    <arg name="publish_mono_stereo"        default="true"/>
-    <arg name="publish_metadata"           default="true"/>
+    <arg name="publish_segmentation"       default="false"/>
     <arg name="vio_restart"                default="/kimera_vio_ros/kimera_vio_ros_node/restart_kimera_vio"/>
 
 
@@ -25,8 +22,6 @@
         <param name="model_type"                 value="$(arg model)"/>
         <param name="weights"                    value="$(arg weight_file)"/>
         <param name="publish_segmentation"       value="$(arg publish_segmentation)"/>
-        <param name="publish_depth"              value="$(arg publish_depth)"/>
-        <param name="publish_mono_stereo"        value="$(arg publish_mono_stereo)"/>
 
         <!-- remap subscriptions -->
         <remap from="/left_cam/image_raw"              to="/$(arg subscription_ns)/left_cam/image_raw"/>
