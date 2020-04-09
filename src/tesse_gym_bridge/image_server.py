@@ -21,6 +21,7 @@
 # this work.
 ###################################################################################################
 
+import errno
 import socket
 import struct
 
@@ -408,10 +409,16 @@ class ImageServer:
         return seg
 
     def _send_image_message(self, return_payload):
-        image_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        image_send_socket.connect(("", self.image_port))
-        image_send_socket.send(return_payload)
-        image_send_socket.close()
+        try:
+            image_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            image_send_socket.connect(("", self.image_port))
+            image_send_socket.send(return_payload)
+        except socket.error as err:
+            if err.errno != errno.ECONNREFUSED:
+                raise err
+            rospy.logwarn("Connection refused on image response")
+        finally:
+            image_send_socket.close()
 
     def _publish_rgb_and_segmentation(self):
         self.segmentation_pubs[0].publish(

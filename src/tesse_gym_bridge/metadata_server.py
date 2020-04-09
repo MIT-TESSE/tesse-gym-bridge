@@ -199,7 +199,7 @@ class MetadataServer:
         except socket.error as err:
             if err.errno != errno.ECONNREFUSED:
                 raise err
-            rospy.loginfo("Connection refused on metadata response")
+            rospy.logwarn("Connection refused on metadata response")
         finally:
             metadata_send_socket.close()
 
