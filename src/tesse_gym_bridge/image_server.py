@@ -141,10 +141,11 @@ class ImageServer:
             Tuple[bool, str]: True if reset was a success, 
                 empty message (to fulfill Trigger interface).
         """
+        self.last_odom_msg = get_origin_odom_msg()
         if self.last_collision_info is not None:
             self.last_collision_info.set_collision_false()
         self.data.metadata_noisy = metadata_from_odometry_msg(
-            get_origin_odom_msg(), self.last_collision_info
+            self.last_odom_msg, self.last_collision_info
         )
 
         return True, ""
