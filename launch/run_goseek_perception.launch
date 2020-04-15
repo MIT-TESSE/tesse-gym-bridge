@@ -4,6 +4,8 @@
     <arg name="kimera_semantics"      default="false"/>
     <arg name="kimera_vio"            default="true"/>
     <arg name="visualize"             default="false"/>
+
+    <!-- Segmentation will be run on demand in TESSE Gym Bridge -->
     <arg name="semantic_segmentation" default="false"/>
 
     <!-- TESSE ROS Bridge arguments -->
@@ -21,9 +23,10 @@
     <arg name="publish_metadata"        default="true"/>
 
     <!-- TESSE Gym Bridge arguments -->
-    <arg name="metadata_port"           default="9007"/>
-    <arg name="image_port"              default="9008"/>
-    <arg name="use_ground_truth"        default="false"/>
+    <arg name="metadata_port"              default="9007"/>
+    <arg name="image_port"                 default="9008"/>
+    <arg name="use_ground_truth"           default="false"/>
+    <arg name="run_segmentation_on_demand" default="true"/>
 
     <arg name="model"                   default="TRTModel"/>
     <arg name="weight_file"             default="$(find tesse_segmentation_ros)/cfg/goseek-unet-a1.onnx"/>
@@ -31,10 +34,13 @@
     <!-- Kimera VIO arguments -->
     <arg name="use_lcd"                 default="false"/>
     <arg name="log_vio_output"          default="true"/>
+    <arg name="run_stereo_dense"        default="true"/>
 
-    <!-- Kimera Semantics / Kimera VIO arguments -->
-    <!-- TODO(ZR) put this only in Kimera Semantics when ready -->
-    <arg name="run_stereo_dense" default="true"/>
+    <!-- StereoBM params tuned for left cam depth image -->
+    <arg name="texture_threshold"        default="1"/>
+    <arg name="disparity_range"          default="70"/>
+    <arg name="min_disparity"            default="-35"/>
+    <arg name="correlation_window_size"  default="21"/>
 
     <!-- Launch TESSE ROS bridge -->
    <include file="$(find tesse_ros_bridge)/launch/tesse_bridge.launch">
@@ -51,13 +57,14 @@
         <arg name="publish_metadata"     value="$(arg publish_metadata)"/>
     </include>
 
-    <!-- Launch Gym ROS Interface -->
+    <!-- Launch TESSE Gym Bridge -->
     <include file="$(find tesse_gym_bridge)/launch/tesse_gym_bridge.launch">
-        <arg name="metadata_port"    value="$(arg metadata_port)"/>
-        <arg name="image_port"       value="$(arg image_port)"/>
-        <arg name="use_ground_truth" value="$(arg use_ground_truth)"/>
-        <arg name="model"       value="$(arg model)"/>
-        <arg name="weight_file" value="$(arg weight_file)"/>
+        <arg name="metadata_port"              value="$(arg metadata_port)"/>
+        <arg name="image_port"                 value="$(arg image_port)"/>
+        <arg name="use_ground_truth"           value="$(arg use_ground_truth)"/>
+        <arg name="run_segmentation_on_demand" value="(arg run_segmentation_on_demand)"/>
+        <arg name="model"                      value="$(arg model)"/>
+        <arg name="weight_file"                value="$(arg weight_file)"/>
     </include>
 
     <group if="$(arg semantic_segmentation)">
@@ -67,11 +74,19 @@
         </include>
     </group>
 
+    <group if="$(arg run_stereo_dense)">
+        <include file="$(find tesse_gym_bridge)/launch/depth_reconstruction.launch">
+            <arg name="texture_threshold"        value="$(arg texture_threshold)"/>
+            <arg name="disparity_range"          value="$(arg disparity_range)"/>
+            <arg name="min_disparity"            value="$(arg min_disparity)"/>
+            <arg name="correlation_window_size"  value="$(arg correlation_window_size)"/>
+        </include>
+    </group>
+
     <!-- Launch Kimera VIO -->
     <group if="$(arg kimera_vio)">
         <include file="$(find kimera_vio_ros)/launch/kimera_vio_ros_tesse.launch">
             <arg name="use_lcd"          value="$(arg use_lcd)"/>
-            <arg name="run_stereo_dense" value="$(arg run_stereo_dense)"/>
             <arg name="log_output"       value="$(arg log_vio_output)"/>
         </include>
 
@@ -83,11 +98,7 @@
 
     <!-- Launch Kimera Semantics -->
     <group if="$(arg kimera_semantics)">
-        <!-- Note: we need a way to pass scene segmentation labels -->
-        <include file="$(find tesse_gym_bridge)/launch/kimera_semantics_goseek.launch">
-            <remap from="/tesse/segmentation"  to="/tesse/segmentation/image_raw"/>
-            <arg name="run_stereo_dense"       value="$(arg run_stereo_dense)"/>
-        </include>
+        <include file="$(find kimera_semantics_ros)/launch/kimera_semantics.launch"/>
 
         <!-- Kimera Semantics Visualization -->
         <group if="$(arg visualize)">
