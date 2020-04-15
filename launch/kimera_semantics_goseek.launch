@@ -102,7 +102,7 @@ and should be removed in lieu of the Kimera-Semantics version once
     <param name="slice_level" value="1.0" />
 
     <param name="semantic_label_2_color_csv_filepath"
-        value="$(find tesse_gym_bridge)/cfg/v5.3/CorridorScene_01_segmentation_mapping_dense.csv"/>
+        value="$(find tesse_gym_bridge)/cfg/goseek/goseek_segmentation_mapping_dense.csv"/>
 
     <param name="publish_pointclouds"     value="false"/>
     <param name="update_mesh_every_n_sec" value="0.2" />

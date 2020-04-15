@@ -1,0 +1,44 @@
+<!-- Provide tesse-gym with data pulled from tesse_ros_bridge -->
+<launch>
+
+    <!-- Set ports -->
+    <arg name="ns"                         default="tesse_gym_bridge"/>
+    <arg name="metadata_port"              default="9007"/>
+    <arg name="image_port"                 default="9008"/>
+    <arg name="subscription_ns"            default="tesse"/>
+    <arg name="use_ground_truth"           default="true"/>
+    <arg name="run_segmentation_on_demand" default="true"/>
+    <arg name="model"                      default="TRTModel"/>
+    <arg name="weight_file"                default=""/>
+    <arg name="publish_segmentation"       default="false"/>
+    <arg name="vio_restart"                default="/kimera_vio_ros/kimera_vio_ros_node/restart_kimera_vio"/>
+
+
+    <node ns="$(arg ns)" name="image_server" pkg="tesse_gym_bridge" type="image_server.py" output="screen">
+        <!-- Set parameters -->
+        <param name="image_port"                 value="$(arg image_port)"/>
+        <param name="use_ground_truth"           value="$(arg use_ground_truth)"/>
+        <param name="run_segmentation_on_demand" value="$(arg run_segmentation_on_demand)"/>
+        <param name="model_type"                 value="$(arg model)"/>
+        <param name="weights"                    value="$(arg weight_file)"/>
+        <param name="publish_segmentation"       value="$(arg publish_segmentation)"/>
+
+        <!-- remap subscriptions -->
+        <remap from="/left_cam/image_raw"              to="/$(arg subscription_ns)/left_cam/image_raw"/>
+        <remap from="/right_cam/image_raw"             to="/$(arg subscription_ns)/right_cam/image_raw"/>
+        <remap from="/segmentation/image_raw"          to="/$(arg subscription_ns)/segmentation/image_raw"/>
+        <remap from="/depth/image_raw"                 to="/$(arg subscription_ns)/depth/image_raw"/>
+        <remap from="/metadata"                        to="/$(arg subscription_ns)/metadata"/>
+        <remap from="/segmentation_estimate/image_raw" to="/semantic_segmentation/prediction_class_colored"/>
+        <remap from="/depth_noisy/image_raw"           to="/stereo_gray/disparity_image_proc/depth/image_raw"/>
+        <remap from="/metadata"                        to="/$(arg subscription_ns)/metadata"/>
+    </node>
+
+    <node ns="$(arg ns)" name="metadata_server" pkg="tesse_gym_bridge" type="metadata_server.py" output="screen">
+        <param name="metadata_port"    value="$(arg metadata_port)"/>
+        <param name="use_ground_truth" value="$(arg use_ground_truth)"/>
+        <param name="vio_restart"      value="$(arg vio_restart)"/>
+        <remap from="/metadata"        to="/$(arg subscription_ns)/metadata"/>
+    </node>
+</launch>
+
