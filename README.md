@@ -1,6 +1,6 @@
 # tesse-gym-bridge
 
-An interface between [tesse-gym](https://github.mit.edu/TESS/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from perception modules.
+An interface between [tesse-gym](https://github.com/MIT-TESSE/tesse-gym) and ROS, allowing an RL agent to operate in TESSE while using results from perception modules.
 
 <div align="center">
   <img src="docs/tesse_kimera_gym_2.gif">
@@ -40,7 +40,9 @@ Please refer to their installation guide.
 
 3. Install [tesse-interface](https://github.com/MIT-TESSE/tesse-interface) 
 
-4. Install [tesse-gym](https://github.com/MIT-TESSE/tesse-gym)
+4. Install [tesse-ros-bridge](https://github.com/MIT-TESSE/tesse-ros-bridge)
+
+5. Install [tesse-segmentation-ros](https://github.com/MIT-TESSE/tesse-segmentation-ros)
 
 
 
@@ -52,7 +54,7 @@ To run TESSE, Kimera-VIO, and Kimera-Semantics, and the required interfaces star
 roslaunch tesse_gym_bridge run_goseek_perception.launch
 ```
 
-To control the TESSE agent through the Gym environment, run see the [move-agent](./notebooks/move-agent.ipynb) notebook
+To control the TESSE agent through the Gym environment, see the [move-agent](./notebooks/move-agent.ipynb) notebook. This requires installing [tesse-gym](https://github.com/MIT-TESSE/tesse-gym) in a Python 3.7 environment. 
 
 ## Disclaimer
 
