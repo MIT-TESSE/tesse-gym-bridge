@@ -18,11 +18,11 @@ catkin init
 
 # clone repo
 cd src
-git clone git@github.mit.edu:TESS/tesse-gym-bridge.git
+git clone https://github.com/MIT-TESSE/tesse-gym-bridge.git
 
 # install dependencies
 wstool init
-wstool merge gym-ros-interface/install/tesse-gym-bridge.rosinstall 
+wstool merge tesse-gym-bridge/install/tesse_gym_bridge.rosinstall 
 cd ..
 
 # compile
