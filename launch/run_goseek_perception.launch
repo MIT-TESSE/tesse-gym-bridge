@@ -16,6 +16,7 @@
     <arg name="near_draw_dist"          default="0.05"/>
     <arg name="far_draw_dist"           default="50"/>
     <arg name="enable_step_mode"        default="true"/>
+    <arg name="enable_collision"        default="true"/>
     <arg name="node_delay"              default="5.0"/>
     <arg name="publish_segmentation"    default="false"/>
     <arg name="publish_depth"           default="false"/>
@@ -55,6 +56,7 @@
         <arg name="publish_depth"        value="$(arg publish_depth)"/>
         <arg name="publish_mono_stereo"  value="$(arg publish_mono_stereo)"/>
         <arg name="publish_metadata"     value="$(arg publish_metadata)"/>
+        <arg name="enable_collision"     value="$(arg enable_collision)"/>
     </include>
 
     <!-- Launch TESSE Gym Bridge -->
