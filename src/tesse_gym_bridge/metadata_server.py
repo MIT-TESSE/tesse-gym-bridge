@@ -24,9 +24,11 @@
 import errno
 import socket
 import struct
+import shutil
 
 import rospy
 from rospy.exceptions import ROSException
+import rospkg
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
@@ -48,6 +50,7 @@ class MetadataServer:
         self.vio_restart_service = rospy.get_param(
             "~vio_restart_service", rospy.get_param("~vio_restart")
         )
+        self.per_episode_kimera_log = rospy.get_param("~per_episode_kimera_log", True)
 
         self.metadata_gt_subscriber = (
             rospy.Subscriber("/metadata", String, self.metadata_callback),
@@ -63,6 +66,16 @@ class MetadataServer:
         self.episode_reset_service = rospy.Service(
             "metadata_server_episode_reset", Trigger, self.episode_reset_service,
         )
+
+        self.kimera_log_path = ""
+        self.episode_count = 0
+        if self.per_episode_kimera_log:
+            try:
+                self.kimera_log_path = rospkg.RosPack().get_path('kimera_vio_ros')
+                self.kimera_log_path += '/output_logs/'
+            except rospkg.common.ResourceNotFound:
+                rospy.logerror("Kimera VIO is not installed, per episode vio logs will not be saved!")
+                self.per_episode_kimera_log = False
 
         # store last received metadata
         self.data = TesseData()
@@ -160,6 +173,16 @@ class MetadataServer:
         """
         try:
             call_trigger_service(self.vio_restart_service, timeout=1)
+
+            if self.per_episode_kimera_log:
+                episode_log_dir = "Tesse_episode_%d" % self.episode_count
+                rospy.loginfo("\n\n\n trying: %s \n\n\n" % episode_log_dir)
+                shutil.rmtree(self.kimera_log_path + episode_log_dir)
+                shutil.copytree(self.kimera_log_path + "Tesse", 
+                                self.kimera_log_path + episode_log_dir)
+                self.episode_count += 1
+                rospy.loginfo("\n\n success \n\n")
+
         except ROSException:
             rospy.loginfo("Kimera VIO reset cannot be reached")
         call_trigger_service("/tesse_gym_bridge/image_server_episode_reset")
