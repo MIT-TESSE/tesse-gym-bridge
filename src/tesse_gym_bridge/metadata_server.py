@@ -175,20 +175,20 @@ class MetadataServer:
         try:
             call_trigger_service(self.vio_restart_service, timeout=1)
 
-            if self.per_episode_kimera_log:
-                episode_log_dir = self.kimera_log_path + "Tesse_episode_%d" % self.episode_count
-
+            if self.per_episode_kimera_log and self.episode_count > 0:
+                episode_log_dir = self.kimera_log_path + "Tesse_%d" % self.episode_count
+                
+                # increment until we write to a new log dir
                 while os.path.isdir(episode_log_dir):
-                    rospy.loginfo("Incrementing episode count")
                     self.episode_count += 1
                     episode_log_dir = self.kimera_log_path + "Tesse_episode_%d" % self.episode_count
-                    rospy.loginfo("Incremented episode count")
+                    rospy.loginfo("Incremented VIO logs episode count to %s" % episode_log_dir)
 
-                rospy.loginfo("\n\n\n trying: %s \n\n\n" % episode_log_dir)
+                rospy.loginfo("Moving current VIO logs to: %s" % episode_log_dir)
                 shutil.copytree(self.kimera_log_path + "Tesse", 
                                 episode_log_dir)
-                self.episode_count += 1
-                rospy.loginfo("\n\n success \n\n")
+            
+            self.episode_count += 1
 
         except ROSException:
             rospy.loginfo("Kimera VIO reset cannot be reached")
