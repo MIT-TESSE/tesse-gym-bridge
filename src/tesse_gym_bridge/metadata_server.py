@@ -25,6 +25,7 @@ import errno
 import socket
 import struct
 import shutil
+import os
 
 import rospy
 from rospy.exceptions import ROSException
@@ -175,11 +176,17 @@ class MetadataServer:
             call_trigger_service(self.vio_restart_service, timeout=1)
 
             if self.per_episode_kimera_log:
-                episode_log_dir = "Tesse_episode_%d" % self.episode_count
+                episode_log_dir = self.kimera_log_path + "Tesse_episode_%d" % self.episode_count
+
+                while os.path.isdir(episode_log_dir):
+                    rospy.loginfo("Incrementing episode count")
+                    self.episode_count += 1
+                    episode_log_dir = self.kimera_log_path + "Tesse_episode_%d" % self.episode_count
+                    rospy.loginfo("Incremented episode count")
+
                 rospy.loginfo("\n\n\n trying: %s \n\n\n" % episode_log_dir)
-                shutil.rmtree(self.kimera_log_path + episode_log_dir)
                 shutil.copytree(self.kimera_log_path + "Tesse", 
-                                self.kimera_log_path + episode_log_dir)
+                                episode_log_dir)
                 self.episode_count += 1
                 rospy.loginfo("\n\n success \n\n")
 
