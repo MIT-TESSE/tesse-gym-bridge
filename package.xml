@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
     <name>tesse_gym_bridge</name>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <description>Bridge between tesse-gym and ROS</description>
 
     <license>MIT</license>
