@@ -25,7 +25,7 @@ from setuptools import setup
 
 setup(
     name="tesse_gym_bridge",
-    version='0.1.0',
+    version='0.1.1',
     packages=['tesse_gym_bridge'],
     package_dir={'': 'src'}
 )
